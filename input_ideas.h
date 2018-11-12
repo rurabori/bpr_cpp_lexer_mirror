@@ -1,13 +1,32 @@
 #include <tuple>
 #include "ctll/list.hpp"
+#include "ctll/fixed_string.hpp"
 
-enum basic_states { a };
+constexpr auto identity() noexcept { return true; }
 
-template <typename pattern, auto action = nullptr>
-struct rule_ {
-	using pattern_t = pattern;
-	static constexpr auto action_t = action;
+template <ctll::basic_fixed_string Pattern,auto Token, auto Action = identity>
+struct lexer_rule
+{
+	static constexpr auto pattern = Pattern;
+	static constexpr auto token = Token;
+	static constexpr auto action = Action;
 };
+
+template <typename Func>
+concept bool LexerFunction = requires(std::string_view a) {
+	{ Func::operator()(a) };
+};
+
+template <typename... Rules> constexpr auto test() {
+	return (Rules::action_t() || ... || false);
+}
+
+
+template <typename Tokens, typename rules = ctll::list<>>
+struct lexer
+{};
+
+
 
 /*
 template <typename TokenEnum, typename rules = ctll::list<>, typename StateEnum = basic_states>
