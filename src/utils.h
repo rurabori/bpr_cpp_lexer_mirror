@@ -2,13 +2,14 @@
 #define CTLE_UTILS
 #include "ctre.hpp"
 #include "ctll/fixed_string.hpp"
+#include "lexer_re.h"
 
 template <ctll::basic_fixed_string input> CTRE_FLATTEN constexpr CTRE_FORCE_INLINE auto make_pattern() noexcept {
 	constexpr auto _input = input; // workaround for GCC 9 bug 88092
 	using tmp = typename ctll::parser<ctre::pcre, _input, ctre::pcre_actions>::template output<ctre::pcre_context<>>;
 	static_assert(tmp(), "Regular Expression contains syntax error.");
 	using re = decltype(front(typename tmp::output_type::stack_type()));
-	return ctre::regular_expression(re());
+	return ctle::regular_expression(re());
 }
 
 template <ctll::basic_fixed_string... strs>
