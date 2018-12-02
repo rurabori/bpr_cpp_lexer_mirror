@@ -1,2 +1,6 @@
 *.out
-
+cmake*/*
+.vscode/c_cpp_properties.json
+*.cmake
+.idea
+.vscode/settings.json
