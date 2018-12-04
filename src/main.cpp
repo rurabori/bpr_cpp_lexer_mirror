@@ -1,6 +1,7 @@
 #include "lexer.h"
 #include <bits/stdc++.h>
 #include "ctll/list.hpp"
+#include "file.h"
 
 enum tokens {
 	name,
@@ -26,13 +27,12 @@ int main(int argc, char const *argv[])
 	 			lexer_rule<"[0-9]+yrs", tokens::age, fun2>,
 	 			lexer_rule<"asd">,
 	 			lexer_rule<"def">,
-	 			lexer_rule<"[ \t]+">
+	 			lexer_rule<"[ \t\r\n]+">
 	 		>
 	 > a;
 
-	auto sw_argv = std::string_view(argv[1]);	
-	
-	auto [res, token] = a.match(sw_argv.begin(), sw_argv.end());
+	ctle::basic_file<char> myfile(argv[1]);
+	auto [res, token] = a.match(myfile.begin(), myfile.end());
 
 	return 0;
 }
