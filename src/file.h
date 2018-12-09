@@ -17,8 +17,8 @@ namespace ctle {
         ~basic_file();
         const CharT* begin() const noexcept { return m_data; }
         const CharT* end() const noexcept { return m_data + m_size; }
-        const CharT* current() const noexcept { return m_data + m_offset; }
-        bool move(int ammount) noexcept;
+        // mmap reports size one bigger than I expect...
+        size_t size() const noexcept { return m_size - 1; }
     private:
         bool open_file(const std::filesystem::path& path) noexcept;
 
@@ -42,16 +42,6 @@ namespace ctle {
     basic_file<CharT>::~basic_file() {
         munmap(m_data, m_size);
         close(m_fd);
-    }
-
-    template <typename CharT>
-    bool basic_file<CharT>::move(int ammount) noexcept {
-        auto tmp = m_offset + ammount;
-        if (tmp < 0 || tmp > m_size)
-            return false;
-        
-        m_offset = tmp;
-        return true;
     }
 
     template <typename CharT>
