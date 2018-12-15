@@ -6,79 +6,84 @@
 #include "utils.h"
 #include "ctll/list.hpp"
 #include <iostream>
+#include <optional>
 #include "ctll_concepts.h"
-
+#include "wise_enum.h"
 #include "file_stack.h"
+#include <stack>
 
-template <typename Tokens, typename rules = ctll::list<>>
+template <typename Id, typename Function>
+struct c_pair{
+	Id first;
+	Function second;
+};
+
+template <	typename ReturnType,
+			typename rules = ctll::list<>, 
+			typename States = nullptr_t, 
+			std::array StateDefinitions = {}> // because we need to know if they're exclusive etc.
 class lexer
 {
-	enum class internal_states;
 public:
-	using sw_type = std::basic_string_view<char>;
-	using stack_type = ctle::basic_file_stack<ctle::basic_file<char>>;
+	using state_t = States;
+	using string_view_t = typename std::basic_string_view<char>;
 
-	auto lex() {
-		while (m_begin != m_end) {
-			auto match_res = match_inner(m_begin, m_end);
-			if (match_res) {
-				if (m_state != internal_states::ignore)
-					return std::pair{m_current_match, m_current_token};
-			} else {
-				break;
+private:
+	using stack_t = ctle::basic_file_stack<ctle::basic_file<char>>;
+	using file_iterator_t = typename stack_t::iterator;
+	using match_t = bool;
+	using match_signature = match_t (lexer::*)();
+	using state_function_pair = c_pair<int, match_signature>;
+	
+	std::array<state_function_pair, StateDefinitions.size() + 1> m_state_functions{state_function_pair{0, nullptr}};
+	std::string_view 	m_current_match;
+
+	// file_stack
+	stack_t m_stack{};
+	file_iterator_t m_begin{};
+	file_iterator_t m_end{};
+	
+
+	std::optional<ReturnType> m_return;
+
+
+	match_t (lexer::* match_filtered)(){nullptr};	
+	std::string_view m_text;
+
+
+public:
+	constexpr lexer() {
+		static_assert(wise_enum::is_wise_enum_v<States>, "Not a wise choice my friend, use WISE_ENUM");
+		fill_state_functions(std::make_index_sequence<StateDefinitions.size()>());	
+		set_state(state_initial);
+	}
+	
+	constexpr bool set_state(int state) {
+		for (auto [s, f] : m_state_functions) {
+			if (s == state) {
+				match_filtered = f;
+				return true;
 			}
 		}
-
-		return std::pair{std::string_view(), Tokens::unknown};
-	}
-
-	template <typename IBegin, typename IEnd>
-	auto CTRE_FORCE_INLINE match_inner (IBegin begin, IEnd end) {
 		
-		set_state("", static_cast<Tokens>(0), internal_states::normal);
-		return match(begin, end, rules());
-	}
-
-	template <typename matched_rule = nullptr_t, typename IBegin,typename IEnd>
-	bool CTRE_FORCE_INLINE match(IBegin begin, IEnd end,ctll::list<>) noexcept {
-		
-		// if we get here we already have our match so we move our iterator and then execute a function if user provided any.
-		std::advance(m_begin, m_current_match.length());
-		// the constexpr if did a doo doo while evaluating && ... so that's why the nested ifs. not pretty. works tho.
-		if constexpr (!std::is_same<matched_rule, std::nullptr_t>()) {
-			using action_t = typename matched_rule::action;
-			if constexpr(!std::is_same<action_t, std::nullptr_t>()) {
-				static_assert(LexingAction<action_t, decltype(*this)>, "Function signature does not match.");
-				m_text = action_t()(m_current_match, *this);	
-			} else {
-				m_text = m_current_match;
-			}
-		}
-
 		return false;
 	}
 
-	template <typename matched_rule = nullptr_t, typename IBegin,typename IEnd, typename rule, typename... others>
-	bool CTRE_FORCE_INLINE match(IBegin begin, IEnd end,ctll::list<rule, others...>) noexcept {			
-		auto r = rule();
-		auto matched = r.match(begin, end);
-		bool next = false;
 
-		if (matched.length() > m_current_match.length()) {
-			internal_states state;
-			if constexpr (std::is_same<typename rule::token_type, nullptr_t>())
-				state = internal_states::ignore;
-			else
-				state = internal_states::normal;
+	constexpr bool set_state(state_t state) {
+		return set_state(static_cast<int>(state));
+	}
 
-			set_state(matched, static_cast<Tokens>(r.get_token()), state);
-			next = match<rule>(begin, end, ctll::list<others...>());
-		} else {
-			next = match<matched_rule>(begin, end, ctll::list<others...>());
+	auto lex() {
+		
+		while (m_begin != m_end) {
+			if (!(this->*match_filtered)()) {
+				break;
+			}
 		}
 		
-		return (matched.length() != 0 || next);
-	}	
+		return std::pair{std::string_view(), ReturnType::unknown};
+	}
 
 	template <typename... Args>
 	bool add_file(Args&&... c_args) {
@@ -91,30 +96,58 @@ public:
 	}
 
 private:
-	
-	constexpr CTRE_FORCE_INLINE void set_state(std::string_view match, Tokens token, internal_states state) {
-		m_current_match = match;
-		m_current_token = token;
-		m_state = state;
+	template<auto index = 0> 
+	constexpr void fsf_impl() {
+		constexpr auto new_index = index + 1;
+		static_assert(static_cast<int>(StateDefinitions[index].value) >= state_reserved, "All states must begin at state_reserved.");
+		m_state_functions[new_index] = state_function_pair{static_cast<int>(StateDefinitions[index].value), &lexer::match_impl<decltype(filter<StateDefinitions[index].value>(rules()))>};
 	}
 
-	enum class internal_states {
-		normal,
-		ignore
-	};
+	template <size_t... idx>
+	constexpr void fill_state_functions(std::index_sequence<idx...>) {
+		m_state_functions[0] = {state_initial, &lexer::match_impl<decltype(filter_initial<StateDefinitions>(rules()))>};
+		(fsf_impl<idx>() , ...);
+	}
 
-	std::string_view 	m_current_match;
-	Tokens 				m_current_token;
-	internal_states 	m_state{internal_states::normal};
+	template <typename filtered_rules>
+	match_t match_impl() {
+		m_current_match = "";
+		m_return.reset();
+		return match(m_begin, m_end, filtered_rules());
+	}
 
-	stack_type m_stack{};
-	stack_type::iterator m_begin{};
-	stack_type::iterator m_end{};
+	template <typename matched_rule = std::nullptr_t, typename IBegin,typename IEnd>
+	match_t CTRE_FORCE_INLINE match(IBegin begin, IEnd end,ctll::list<>) noexcept {
+		// if we get here we already have our match so we move our iterator and then execute a function if user provided any.
+		if constexpr (!std::is_same<matched_rule, std::nullptr_t>()) {
+			std::advance(m_begin, m_current_match.length());
+			// the constexpr if did a doo doo while evaluating && ... so that's why the nested ifs. not pretty. works tho.
+			if constexpr(matched_rule::has_action()) {
+				matched_rule::do_action(*this);
+				m_text = m_current_match;
+			} else {
+				m_text = m_current_match;
+			}
+			return true;
+		} else {
+			return false;
+		}
+	}
 
+	template <typename matched_rule = nullptr_t, typename IBegin,typename IEnd, typename rule, typename... others>
+	match_t CTRE_FORCE_INLINE match(IBegin begin, IEnd end,ctll::list<rule, others...>) noexcept {			
+		auto matched = rule::match(begin, end);
+		bool next = false;
 
-	std::string m_text{100};
+		if (matched.length() > m_current_match.length()) {
+			m_current_match = matched;
+			next = match<rule>(begin, end, ctll::list<others...>());
+		} else {
+			next = match<matched_rule>(begin, end, ctll::list<others...>());
+		}
+		
+		return (matched.length() != 0 || next);
+	}	
 };
-
-
 
 #endif // CTLE_LEXER

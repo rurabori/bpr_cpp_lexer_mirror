@@ -3,6 +3,7 @@
 #include "ctre.hpp"
 #include "ctll/fixed_string.hpp"
 #include "lexer_re.h"
+#include "states.h"
 
 template <ctll::basic_fixed_string input> CTRE_FLATTEN constexpr CTRE_FORCE_INLINE auto make_pattern() noexcept {
 	constexpr auto _input = input; // workaround for GCC 9 bug 88092
@@ -41,5 +42,41 @@ template <ctll::basic_fixed_string pattern> constexpr auto add_capture() {
 	return concat_strings<"(", pattern, ")">();
 	//return concat_fixed_strings< concat_fixed_strings<"(",pattern>(), ")" >();
 }
+
+
+template<auto mask>
+constexpr auto filter(ctll::list<>) -> ctll::list<> {
+	return {};
+}
+
+template<auto mask, typename first, typename... rest>
+constexpr auto filter(ctll::list<first, rest...>/*, typename std::enable_if_t<>* = 0*/)  {
+	if constexpr (first().is_valid_in_state(mask)) {
+		return ctll::concat(ctll::list<first>(), filter<mask>(ctll::list<rest...>()));
+	} else {
+		return filter<mask>(ctll::list<rest...>());
+	}
+}
+
+template<std::array>
+constexpr auto filter_initial(ctll::list<>) -> ctll::list<> {
+	return {};
+}
+
+
+template<std::array all, typename rule, size_t... idx>
+constexpr bool initial_filter_helper(std::index_sequence<idx...>) {
+	return ((!all[idx].exclusive && rule::is_valid_in_state(all[idx].value)) || ... || rule::is_valid_in_state(state_initial));
+}
+
+template<std::array all, typename first, typename... rest>
+constexpr auto filter_initial(ctll::list<first, rest...>)  {
+	if constexpr (initial_filter_helper<all, first>(std::make_index_sequence<all.size()>())) {
+		return ctll::concat(ctll::list<first>(), filter_initial<all>(ctll::list<rest...>()));
+	} else {
+		return filter_initial<all>(ctll::list<rest...>());	
+	}
+}
+
 
 #endif //CTLE_UTILS
