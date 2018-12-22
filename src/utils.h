@@ -40,9 +40,7 @@ constexpr auto concat_strings() {
 
 template <ctll::basic_fixed_string pattern> constexpr auto add_capture() {
 	return concat_strings<"(", pattern, ")">();
-	//return concat_fixed_strings< concat_fixed_strings<"(",pattern>(), ")" >();
 }
-
 
 template<auto mask>
 constexpr auto filter(ctll::list<>) -> ctll::list<> {
@@ -77,6 +75,5 @@ constexpr auto filter_initial(ctll::list<first, rest...>)  {
 		return filter_initial<all>(ctll::list<rest...>());	
 	}
 }
-
 
 #endif //CTLE_UTILS

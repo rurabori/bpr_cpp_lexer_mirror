@@ -2,6 +2,7 @@
 #define CTLE_FILE_STACK
 #include "file.h"
 #include "stack_iterator.h"
+#include <vector>
 
 namespace ctle {
 

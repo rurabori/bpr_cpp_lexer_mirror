@@ -1,5 +1,6 @@
 *.out
 cmake*/*
+build*/*
 .vscode/c_cpp_properties.json
 *.cmake
 .idea

@@ -27,14 +27,17 @@ class lexer
 public:
 	using state_t = States;
 	using string_view_t = typename std::basic_string_view<char>;
+	using return_t = ReturnType;
 
+	using action_signature = std::optional<ReturnType>(*)(lexer&);
+	
 private:
 	using stack_t = ctle::basic_file_stack<ctle::basic_file<char>>;
 	using file_iterator_t = typename stack_t::iterator;
-	using match_t = bool;
+	using match_t = std::optional<ReturnType>;
 	using match_signature = match_t (lexer::*)();
 	using state_function_pair = c_pair<int, match_signature>;
-	
+
 	std::array<state_function_pair, StateDefinitions.size() + 1> m_state_functions{state_function_pair{0, nullptr}};
 	std::string_view 	m_current_match;
 
@@ -75,14 +78,7 @@ public:
 	}
 
 	auto lex() {
-		
-		while (m_begin != m_end) {
-			if (!(this->*match_filtered)()) {
-				break;
-			}
-		}
-		
-		return std::pair{std::string_view(), ReturnType::unknown};
+		return std::pair{"", (this->*match_filtered)()};		
 	}
 
 	template <typename... Args>
@@ -111,42 +107,26 @@ private:
 
 	template <typename filtered_rules>
 	match_t match_impl() {
-		m_current_match = "";
-		m_return.reset();
-		return match(m_begin, m_end, filtered_rules());
+		return match(filtered_rules());
 	}
 
-	template <typename matched_rule = std::nullptr_t, typename IBegin,typename IEnd>
-	match_t CTRE_FORCE_INLINE match(IBegin begin, IEnd end,ctll::list<>) noexcept {
-		// if we get here we already have our match so we move our iterator and then execute a function if user provided any.
-		if constexpr (!std::is_same<matched_rule, std::nullptr_t>()) {
-			std::advance(m_begin, m_current_match.length());
-			// the constexpr if did a doo doo while evaluating && ... so that's why the nested ifs. not pretty. works tho.
-			if constexpr(matched_rule::has_action()) {
-				matched_rule::do_action(*this);
-				m_text = m_current_match;
-			} else {
-				m_text = m_current_match;
+	template <typename... rule_list>
+	match_t CTRE_FORCE_INLINE match(ctll::list<rule_list...>) noexcept {			
+
+		while (m_begin != m_end) {
+			auto [result, action] = (lexer_result<lexer, action_signature>{"", nullptr} | ... | rule_list::template match2<lexer>(m_begin, m_end));
+			if (!result.size())
+				break;
+			
+			std::advance(m_begin, result.size());
+
+			if (action) {
+				if (auto retval = action(*this); retval)
+					return retval;
 			}
-			return true;
-		} else {
-			return false;
 		}
-	}
 
-	template <typename matched_rule = nullptr_t, typename IBegin,typename IEnd, typename rule, typename... others>
-	match_t CTRE_FORCE_INLINE match(IBegin begin, IEnd end,ctll::list<rule, others...>) noexcept {			
-		auto matched = rule::match(begin, end);
-		bool next = false;
-
-		if (matched.length() > m_current_match.length()) {
-			m_current_match = matched;
-			next = match<rule>(begin, end, ctll::list<others...>());
-		} else {
-			next = match<matched_rule>(begin, end, ctll::list<others...>());
-		}
-		
-		return (matched.length() != 0 || next);
+		return ReturnType::unknown;
 	}	
 };
 
