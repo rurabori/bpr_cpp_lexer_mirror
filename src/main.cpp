@@ -26,8 +26,7 @@ class echo {
 public:
 	template <typename... pack>
 	void operator()(LexerInterface& b, pack... all) {
-		(printf("ECHO : %s", all.to_view().data()), ...);
-		//return tokens::age;
+    	(std::cout << "ECHO : " << ... << all.to_view()) << '\n';
 	}
 };
 

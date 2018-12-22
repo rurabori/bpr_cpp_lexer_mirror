@@ -57,19 +57,21 @@ public:
 		return true;
 	}
 
-	template <typename Lexer, typename = std::enable_if_t<!std::is_same_v<Action, std::nullptr_t>>>
-	static CTRE_FORCE_INLINE auto do_action(Lexer& lexer) {		
-		using return_t = decltype(do_action_impl(lexer, std::make_index_sequence<std::tuple_size_v<pattern_return>>()));
-
-		if constexpr (std::is_same_v<return_t, void>)
-			return std::optional<typename Lexer::return_t>{};
-		else
-			return std::optional{do_action_impl(lexer, std::make_index_sequence<std::tuple_size_v<pattern_return>>())};
-	}
-	
 	static constexpr bool is_valid_in_state(auto state, typename std::enable_if_t<!contains<States>(all_states)>* = 0) {
 		return contains<States>(state);
 	}
+
+	template <typename Lexer, typename = std::enable_if_t<!std::is_same_v<Action, std::nullptr_t>>>
+	static CTRE_FORCE_INLINE auto do_action(Lexer& lexer) {		
+		using return_t = decltype(do_action_impl(lexer, std::make_index_sequence<std::tuple_size_v<pattern_return>>()));
+ 		if constexpr (std::is_same_v<return_t, void>) {
+			do_action_impl(lexer, std::make_index_sequence<std::tuple_size_v<pattern_return>>());
+			return std::optional<typename Lexer::return_t>{};
+		} else {
+			return std::optional{do_action_impl(lexer, std::make_index_sequence<std::tuple_size_v<pattern_return>>())};
+		}
+	}
+	
 
 	
 
