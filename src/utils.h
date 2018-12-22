@@ -4,6 +4,7 @@
 #include "ctll/fixed_string.hpp"
 #include "lexer_re.h"
 #include "states.h"
+#include <array>
 
 template <ctll::basic_fixed_string input> CTRE_FLATTEN constexpr CTRE_FORCE_INLINE auto make_pattern() noexcept {
 	constexpr auto _input = input; // workaround for GCC 9 bug 88092
@@ -42,38 +43,42 @@ template <ctll::basic_fixed_string pattern> constexpr auto add_capture() {
 	return concat_strings<"(", pattern, ")">();
 }
 
-template<auto mask>
-constexpr auto filter(ctll::list<>) -> ctll::list<> {
-	return {};
-}
-
-template<auto mask, typename first, typename... rest>
-constexpr auto filter(ctll::list<first, rest...>/*, typename std::enable_if_t<>* = 0*/)  {
-	if constexpr (first().is_valid_in_state(mask)) {
-		return ctll::concat(ctll::list<first>(), filter<mask>(ctll::list<rest...>()));
+template<auto mask, typename rule>
+constexpr auto filter_one()  {
+	if constexpr (rule::is_valid_in_state(mask)) {
+		return ctll::list<rule>();
 	} else {
-		return filter<mask>(ctll::list<rest...>());
+		return ctll::list<>();
 	}
 }
 
-template<std::array>
-constexpr auto filter_initial(ctll::list<>) -> ctll::list<> {
-	return {};
+template<auto mask, typename... rules>
+constexpr auto filter(ctll::list<rules...>)  {
+	return (ctll::list<>() + ... + filter_one<mask, rules>());
 }
-
 
 template<std::array all, typename rule, size_t... idx>
 constexpr bool initial_filter_helper(std::index_sequence<idx...>) {
 	return ((!all[idx].exclusive && rule::is_valid_in_state(all[idx].value)) || ... || rule::is_valid_in_state(state_initial));
 }
 
-template<std::array all, typename first, typename... rest>
-constexpr auto filter_initial(ctll::list<first, rest...>)  {
-	if constexpr (initial_filter_helper<all, first>(std::make_index_sequence<all.size()>())) {
-		return ctll::concat(ctll::list<first>(), filter_initial<all>(ctll::list<rest...>()));
+template <typename... Start, typename Next>
+constexpr auto operator+(ctll::list<Start...> start, Next next) {
+	return ctll::concat(start, next);
+}
+
+template<std::array all, typename rule>
+constexpr auto initial_filter_one()  {
+	if constexpr (initial_filter_helper<all, rule>(std::make_index_sequence<all.size()>())) {
+		return ctll::list<rule>();
 	} else {
-		return filter_initial<all>(ctll::list<rest...>());	
+		return ctll::list<>();	
 	}
+}
+
+template<std::array all, typename... rules>
+constexpr auto filter_initial(ctll::list<rules...>)  {
+	return (ctll::list<>() + ... + initial_filter_one<all, rules>());
 }
 
 #endif //CTLE_UTILS
