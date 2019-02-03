@@ -1,11 +1,11 @@
 #ifndef CTLE_LEXER_RE
 #define CTLE_LEXER_RE
-#include "ctre/wrapper.hpp"
+#include "lexer_re.h"
 
 namespace ctle {
-
-
-    // copied from CTRE, just doesn't assert end of string as we need to match only on start on string(or rather search).
+    /**
+     * @brief copied from CTRE, just doesn't assert end of string as we need to match only on start on string(or rather search).
+     */
     template <typename Iterator, typename EndIterator, typename Pattern> 
     constexpr inline auto match_start(const Iterator begin, const EndIterator end, Pattern pattern) noexcept {
         using namespace ctre;
@@ -23,8 +23,23 @@ namespace ctle {
             return match_start(begin, end, RE());
         }        
     };
+    
+    /**
+     * @brief creates regular_expression.
+     * 
+     * @tparam input pattern from which re is created.
+     */
+    template <ctll::basic_fixed_string input> 
+    CTRE_FLATTEN constexpr CTRE_FORCE_INLINE auto make_re() noexcept {
+        constexpr auto _input = input; // workaround for GCC 9 bug 88092
+        using tmp = typename ctll::parser<ctre::pcre, _input, ctre::pcre_actions>::template output<ctre::pcre_context<>>;
+        static_assert(tmp(), "Regular Expression contains syntax error.");
+        using re = decltype(front(typename tmp::output_type::stack_type()));
+        return ctle::regular_expression(re());
+    }
 
     template <typename RE> regular_expression(RE) -> regular_expression<RE>;
-}
+
+} // namespace ctle
 
 #endif // CTLE_LEXER_RE

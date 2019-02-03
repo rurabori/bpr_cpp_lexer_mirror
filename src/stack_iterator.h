@@ -1,5 +1,6 @@
 #ifndef CTLE_STACK_ITERATOR
 #define CTLE_STACK_ITERATOR
+
 namespace ctle {
     template <typename stack>
     class stack_iterator {
