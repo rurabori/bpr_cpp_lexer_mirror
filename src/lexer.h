@@ -2,14 +2,18 @@
 #define CTLE_LEXER
 
 #include "lexer_rule.h"
-#include "ctre.hpp"
+#include "type_filter.h"
+#include "rule_filters.h"
 #include "utils.h"
+#include "ctle_concepts.h"
+#include "file_stack.h"
+
+#include "ctre.hpp"
 #include "ctll/list.hpp"
+#include "wise_enum.h"
+
 #include <iostream>
 #include <optional>
-#include "ctle_concepts.h"
-#include "wise_enum.h"
-#include "file_stack.h"
 #include <stack>
 #include <variant>
 
@@ -46,10 +50,12 @@ namespace ctle {
 		 */
 		template<typename... rule>
 		static constexpr auto get_return_pack(ctll::list<rule...>) -> ctll::list<typename rule::template return_t<file_iterator_t>...>;
+
+		using return_pack_t = decltype(get_return_pack(std::declval<Rules>()));
 		/**
 		 * @brief a variant which holds all possible return values of lexer_rule::match
 		 */
-		using variant_return_t = decltype(assign_unique<std::variant>(get_return_pack(Rules{})));
+		using variant_return_t = ctle::unique_from_list_to_type_t<std::variant, return_pack_t>;
 		/**
 		 * @brief required signature of lexer_rule action.
 		 */
@@ -89,7 +95,6 @@ namespace ctle {
 			fill_state_functions(std::make_index_sequence<StateDefinitions.size()>());	
 			set_state(state_initial);
 		}
-		
 		/**
 		 * @brief Set the state of lexer.
 		 * 
@@ -151,7 +156,12 @@ namespace ctle {
 		constexpr void fsf_impl() {
 			constexpr auto new_index = index + 1;
 			static_assert(static_cast<int>(StateDefinitions[index].value) >= state_reserved, "All states must begin at state_reserved.");
-			m_state_functions[new_index] = state_function_pair_t{static_cast<int>(StateDefinitions[index].value), &lexer::match_impl<decltype(filter<StateDefinitions[index].value>(Rules()))>};
+			// create a filter for this state
+			using filter = state_filter<StateDefinitions[index].value>;
+			// take pointer to a method with a filtered set of rules.
+			auto function_ptr = &lexer::match_impl<typename filter::template filtered_t<Rules>>;
+			// add this matching function to array of all matching functions.
+			m_state_functions[new_index] = state_function_pair_t{static_cast<int>(StateDefinitions[index].value), function_ptr};
 		}
 		/**
 		 * @brief creates matching functions for all states.
@@ -160,7 +170,15 @@ namespace ctle {
 		 */
 		template <size_t... idx>
 		constexpr void fill_state_functions(std::index_sequence<idx...>) {
-			m_state_functions[0] = {state_initial, &lexer::match_impl<decltype(filter_initial<StateDefinitions>(Rules()))>};
+			// this one is a bit special, as we do not check the value of state (starts at ...) also using different filter.
+			constexpr auto tmp = StateDefinitions; // gcc just does not like sending cnttp parameters around.
+			// create a filter for this state
+			using filter = initial_filter<tmp>;
+			// take pointer to a method with a filtered set of rules.
+			auto function_ptr = &lexer::match_impl<typename filter::template filtered_t<Rules>>;
+			// add this matching function to array of all matching functions.
+			m_state_functions[0] = {state_initial, function_ptr};
+			// fill other state functions
 			(fsf_impl<idx>() , ...);
 		}
 		/**
