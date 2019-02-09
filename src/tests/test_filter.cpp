@@ -18,7 +18,7 @@ int main() {
     // test filtering rules by state
     {
         enum estates {
-            state1 = 255,
+            state1 = ctle::state_reserved, // all user defined enums must start here, lexer checks this at compile time.
             state2
         };
         constexpr std::array state_definitions{ctle::state<estates>{state1, true}, ctle::state<estates>{state2, false}};
