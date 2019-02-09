@@ -34,5 +34,20 @@ namespace ctle{
 	constexpr auto operator+(ctll::list<Start...> start, Next next) {
 		return ctll::concat(start, next);
 	}
+	/**
+	 * @brief std::find marked as non-constexpr by my compiler, workaround.
+	 * 
+	 * @tparam array of elements to be searched.
+	 * @param is_in the element to search for
+	 * @return true if contains else false.
+	 */
+	template<std::array array>
+	constexpr bool contains(auto is_in) {
+		for (auto x : array)
+			if (static_cast<int>(x) == static_cast<int>(is_in))
+				return true;
+
+		return false;
+	}
 }
 #endif //CTLE_UTILS

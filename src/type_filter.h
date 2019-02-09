@@ -51,7 +51,7 @@ namespace ctle {
             // check if it's the same as the one being judged.
             if constexpr (std::is_same_v<front, Type>) {
                 // if same, add to the results and remove all other occurences from remaining types.
-                return std::pair<ctll::list<Type, Results...>, decltype(detail::remove_type<Type, Types...>())>{};
+                return std::pair<ctll::list<Results..., Type>, decltype(detail::remove_type<Type, Types...>())>{};
             } else {
                 // else return what we had, because the type at the front will come in some next iteration.
                 return input;		
