@@ -22,7 +22,7 @@ namespace ctle {
         };
 
         /**
-         * @brief tries to add a file to the stack, if fail, nothing changes stack_wise.
+         * @brief tries to add a file to the stack, if it fails, nothing changes stack_wise.
          * 
          * @tparam Args
          * @param constructor_args forwarded to FileType creator.
