@@ -1,5 +1,7 @@
-#ifndef CTLE_ACTIONS
-#define CTLE_ACTIONS
+#ifndef CTLE_DEFAULT_ACTIONS
+
+#define CTLE_DEFAULT_ACTIONS
+
 
 #include "ctle_concepts.h"
 
@@ -45,4 +47,4 @@ namespace ctle::default_actions {
 		}
 	};
 } // namespace ctle
-#endif //CTLE_ACTIONS
+#endif //CTLE_DEFAULT_ACTIONS

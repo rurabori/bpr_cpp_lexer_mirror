@@ -1,6 +1,8 @@
 #ifndef CTLE_LEXER_RESULT
 #define CTLE_LEXER_RESULT
 
+#include "action.h"
+
 #include <variant>
 #include <optional>
 
@@ -16,6 +18,9 @@ namespace ctle {
     template <typename ResultType, typename Action = std::nullptr_t>
     struct match_result {
         ResultType      match;
+
+        template <typename ReturnType>
+        using action_t = action<Action, ReturnType>;
         /**
          * @brief get a view of the match.
          * 
@@ -48,7 +53,7 @@ namespace ctle {
         template<typename = std::enable_if_t<has_action()>>
         auto do_action(LexerInterface& lexer) {
             using return_t = typename std::remove_reference_t<decltype(lexer)>::return_t;
-            return ctle::apply_tuple<callable<Action, return_t>>(match, lexer);
+            return ctle::apply_tuple<action_t<return_t>>(match, lexer);
         }
     };
 

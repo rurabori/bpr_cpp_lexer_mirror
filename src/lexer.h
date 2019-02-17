@@ -7,7 +7,8 @@
 #include "utils.h"
 #include "ctle_concepts.h"
 #include "file_stack.h"
-#include "actions.h"
+#include "default_actions.h"
+#include "action.h"
 
 #include "ctre.hpp"
 #include "ctll/list.hpp"
@@ -249,11 +250,11 @@ namespace ctle {
 		return_t match(ctll::list<rule_list...>) noexcept {
 			std::optional<return_t> retval;
 			if (m_current_file.begin == m_current_file.end) {
-				retval = callable<eof_handler, return_t>::execute(*this);
+				retval = action<eof_handler, return_t>::execute(*this);
 			} else {
 				auto result = (variant_return_t{} | ... | variant_return_t{rule_list::match(m_current_file.begin, m_current_file.end)});
 				if (!result.length()) 
-					retval = callable<NoMatchHandler, return_t>::execute(*this);
+					retval = action<NoMatchHandler, return_t>::execute(*this);
 
 				std::advance(m_current_file.begin, result.length());
 				update_text(result.to_view());
