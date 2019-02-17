@@ -17,7 +17,7 @@ WISE_ENUM(states, (string, state_reserved), CLASS)
 
 class plus_operation {
 public:
-	tokens operator()(LexerInterface& b, std::string_view all, std::string_view first_num, std::string_view second_num) {
+	static tokens execute(LexerInterface& b, std::string_view all, std::string_view first_num, std::string_view second_num) {
 		b.smd();
 		std::cout << all;
 		std::cout << " || = " << std::atoi(std::string(first_num.begin(), first_num.end()).c_str()) + std::atoi(std::string(second_num.begin(), second_num.end()).c_str()) << std::endl;

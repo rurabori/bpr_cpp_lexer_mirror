@@ -48,7 +48,7 @@ namespace ctle {
         template<typename = std::enable_if_t<has_action()>>
         auto do_action(LexerInterface& lexer) {
             using return_t = typename std::remove_reference_t<decltype(lexer)>::return_t;
-            return ctle::apply_tuple(callable<Action, return_t>(), match, lexer);
+            return ctle::apply_tuple<callable<Action, return_t>>(match, lexer);
         }
     };
 

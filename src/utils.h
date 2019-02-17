@@ -58,8 +58,8 @@ namespace ctle{
 	namespace detail {	
 		// glorified std::apply which allows for varargs before|| THE VARARGS ARE APPLIED BEFORE TUPLE
 		template<typename Callable, typename... Args, typename Tuple, size_t... idx>
-		static constexpr CTRE_FORCE_INLINE auto apply_tuple(Callable&& f, Tuple&& tuple, std::index_sequence<idx...>, Args&&... args) {
-			return f(std::forward<Args>(args)..., tuple.template get<idx>()...);	
+		static constexpr CTRE_FORCE_INLINE auto apply_tuple(Tuple&& tuple, std::index_sequence<idx...>, Args&&... args) {
+			return Callable::execute(std::forward<Args>(args)..., tuple.template get<idx>()...);	
 		}
 		// yes this only swaps pair right now, not needed for anything else atm.
 		template<typename Ty>
@@ -74,9 +74,9 @@ namespace ctle{
 
 	// glorified std::apply which allows for varargs before || THE VARARGS ARE APPLIED BEFORE TUPLE
 	template<typename Callable, typename... Args, typename Tuple>
-	static constexpr CTRE_FORCE_INLINE auto apply_tuple(Callable&& f, Tuple&& tuple, Args&&... args) {
+	static constexpr CTRE_FORCE_INLINE auto apply_tuple(Tuple&& tuple, Args&&... args) {
 		constexpr auto tuple_size = std::tuple_size_v<std::remove_reference_t<Tuple>>;
-		return detail::apply_tuple<Callable>(std::move(f), std::move(tuple), std::make_index_sequence<tuple_size>(), std::forward<Args>(args)...);	
+		return detail::apply_tuple<Callable>(std::move(tuple), std::make_index_sequence<tuple_size>(), std::forward<Args>(args)...);	
 	}
 	
 	// just a bubble sort, not expecting long sequences of states.
@@ -106,8 +106,8 @@ namespace ctle{
         using optional_return_t = std::optional<ReturnType>;
     public:
         template<typename... Args>
-        optional_return_t operator()(Args&&... args) {
-            using action_return_t = decltype(Action()(std::forward<Args>(args)...));
+        static optional_return_t execute(Args&&... args) {
+            using action_return_t = decltype(Action::execute(std::forward<Args>(args)...));
 			// distinguish between returning and non_returning ones.
 			if constexpr (!std::is_same_v<action_return_t, void>) {
 				// check if return type is correct.
@@ -115,9 +115,9 @@ namespace ctle{
                                 std::is_same_v<action_return_t, optional_return_t>, 
                                 "Action has a wrong return type."
                 );
-                return optional_return_t{Action()(std::forward<Args>(args)...)};
+                return optional_return_t{Action::execute(std::forward<Args>(args)...)};
             } else {
-                Action()(std::forward<Args>(args)...);
+                Action::execute(std::forward<Args>(args)...);
                 return optional_return_t{};
             }
         }

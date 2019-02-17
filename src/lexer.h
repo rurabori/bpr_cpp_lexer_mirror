@@ -25,7 +25,7 @@ namespace ctle {
 	 * @tparam States an enum in which states are defined.
 	 * @tparam StateDefinitions the definition of a state itself ((non)exclusive | eof action etc.).
 	 * @tparam DerivesFrom a derives_from specialization of all the base clases. This way you can add your own behavior to lexer (fx. count lines).
-	 * @tparam EofHandler a callable which gets called on eofs.
+	 * @tparam EofHandler a handler which gets called on eofs.
 	 * @tparam NoMatchHandler a handler if nothing matches.
 	 * @tparam FileType a class representing input file (needs to implement initialize() -> bool).
 	 */
@@ -249,11 +249,11 @@ namespace ctle {
 		return_t match(ctll::list<rule_list...>) noexcept {
 			std::optional<return_t> retval;
 			if (m_current_file.begin == m_current_file.end) {
-				retval = callable<eof_handler, return_t>()(*this);
+				retval = callable<eof_handler, return_t>::execute(*this);
 			} else {
 				auto result = (variant_return_t{} | ... | variant_return_t{rule_list::match(m_current_file.begin, m_current_file.end)});
 				if (!result.length()) 
-					retval = callable<NoMatchHandler, return_t>()(*this);
+					retval = callable<NoMatchHandler, return_t>::execute(*this);
 
 				std::advance(m_current_file.begin, result.length());
 				update_text(result.to_view());
