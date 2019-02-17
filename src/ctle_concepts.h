@@ -6,7 +6,7 @@ template <typename Lexer>
 concept bool LexerInterface = requires(Lexer lexer) {
 	{ lexer.add_file(std::filesystem::path("test")) } -> bool;
     { lexer.set_state(0) } -> bool;
-    typename Lexer::string_view_t;
+    typename Lexer::return_t;
 };
 
 template <typename Functor, typename Lexer>
