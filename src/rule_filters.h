@@ -48,20 +48,20 @@ namespace ctle {
 	/**
 	 * @brief filters rules for the "initial" state of lexer AKA rules valid in initial states and rules from non-exclsive states.
 	 * 
-	 * @tparam StateDefinitions an array of all state definitions (we need to know whether they are exclusive).
+	 * @tparam StateDefinitions a list of all state definitions (we need to know whether they are exclusive).
 	 */
-	template<std::array StateDefinitions>
+	template<typename StateDefinitions>
 	class initial_filter {
 		/**
 		 * @brief a function to decide whether one rule is valid in the initial state. 
 		 * 
 		 * @tparam rule the rule to be decided.
-		 * @tparam idx index sequence to index all rules in the array.
+		 * @tparam StateDefinition a variadic param containing definitions for all states.
 		 * @return true if valid false else.
 		 */
-		template<typename Rule, size_t... idx>
-		static constexpr bool decide(std::index_sequence<idx...>) {
-			return ((!StateDefinitions[idx].exclusive && Rule::is_valid_in_state(StateDefinitions[idx].value)) || ... || Rule::is_valid_in_state(state_initial));
+		template<typename Rule, typename... StateDefinition>
+		static constexpr bool decide(ctll::list<StateDefinition...>) {
+			return ((!StateDefinition::exclusive() && Rule::is_valid_in_state(StateDefinition::identifier())) || ... || Rule::is_valid_in_state(state_initial));
 		}
 		/**
 		 * @brief checks if one rule is valid in an initial state.
@@ -71,7 +71,7 @@ namespace ctle {
 		 */
 		template<typename Rule>
 		static constexpr auto filter_one()  {
-			if constexpr (decide<Rule>(std::make_index_sequence<StateDefinitions.size()>())) {
+			if constexpr (decide<Rule>(StateDefinitions())) {
 				return ctll::list<Rule>();
 			} else {
 				return ctll::list<>();	
