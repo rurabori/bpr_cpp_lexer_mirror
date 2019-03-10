@@ -1,6 +1,8 @@
 #ifndef CTLE_STATES
 #define CTLE_STATES
 
+#include "callable.h"
+
 namespace ctle {
     /**
      * @brief a small struct representing a definition of state.
@@ -9,12 +11,12 @@ namespace ctle {
      * @tparam Exclusive specifies whether the rule is exclusive or not (if it's actions are available to other states).
      * @tparam EofAction an action to be encountered if EOF reached in this state (if none specified, the default of lexer is taken).
      */
-    template <auto Identifier, bool Exclusive = false, typename EofAction = std::nullptr_t>
+    template <auto Identifier, bool Exclusive = false, callable EofAction = empty_callable>
     struct state {
         // accessors
         static constexpr auto identifier() noexcept { return Identifier; }
         static constexpr bool exclusive() noexcept { return Exclusive; }
-        using eof_action_t = EofAction;
+        static constexpr auto eof_action() noexcept { return EofAction; }
     };
        
     // always defined states.

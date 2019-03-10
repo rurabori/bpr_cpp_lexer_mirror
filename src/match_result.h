@@ -2,6 +2,7 @@
 #define CTLE_LEXER_RESULT
 
 #include "action.h"
+#include "callable.h"
 
 #include <variant>
 #include <optional>
@@ -15,12 +16,9 @@ namespace ctle {
      * @tparam ResultType the type of return for a pattern creating this (fx. rules with captures have different returns).
      * @tparam Action, a callable object which is called if this is the best match.
      */
-    template <typename ResultType, typename Action = std::nullptr_t>
+    template <typename ResultType, callable Action>
     struct match_result {
         ResultType      match;
-
-        template <typename ReturnType>
-        using action_t = action<Action, ReturnType>;
         /**
          * @brief get a view of the match.
          * 
@@ -36,25 +34,29 @@ namespace ctle {
          */
         auto length() const noexcept {
             return to_view().length();
-        }
+        }        
         /**
          * @brief   check whether rule creating this provided an action to execute
          *          if this is the longest match.
          * 
          * @return bool
          */
-        static constexpr bool has_action() { return !std::is_same_v<Action, std::nullptr_t>; }
+        static constexpr bool has_action() { return !Action.empty(); }
+
         /**
          * @brief executes an action if this is the result picked as the best.
          * 
+         * @tparam ReturnT, expected return type of action.
          * @param lexer reference to lexer to pass to the action being executed.
          * @return a std::optional of return_t obtained from lexer. If empty, the action is non-returning.
          */
-        template<typename = std::enable_if_t<has_action()>>
-        auto do_action(LexerInterface& lexer) {
-            using return_t = typename std::remove_reference_t<decltype(lexer)>::return_t;
-            return ctle::apply_tuple<action_t<return_t>>(match, lexer);
+        template<typename ReturnT, typename = std::enable_if_t<has_action()>>
+        auto do_action(auto&&... args) {
+            static constexpr auto action_copy = Action;
+            return ctle::apply_tuple<action<action_copy, ReturnT>{}>(match, std::forward<decltype(args)>(args)...);
         }
+
+
     };
 
 
@@ -109,15 +111,15 @@ namespace ctle {
          * @see match_result::do_action()
          */
 
-        auto do_action(LexerInterface& lexer) noexcept { 
-            using return_t = std::optional<typename std::remove_reference_t<decltype(lexer)>::return_t>;
+        auto do_action(LexerInterface& lexer) noexcept {
+            using lexer_return_t = typename std::remove_reference_t<decltype(lexer)>::return_t;
+            using return_t = std::optional<lexer_return_t>;
+
             const auto visitor = [&lexer](auto&& value){
-                return_t retval;
-
                 if constexpr (value.has_action())
-                   retval = value.do_action(lexer);
-
-                return retval;
+                    return value.template do_action<lexer_return_t>(lexer);
+                else
+                    return return_t{};
             };
 
             return std::visit(visitor, m_match);    

@@ -6,9 +6,9 @@
 #include "rule_filters.h"
 #include "utils.h"
 #include "ctle_concepts.h"
-#include "file_stack.h"
 #include "default_actions.h"
 #include "action.h"
+#include "file_stack.h"
 
 #include "ctre.hpp"
 #include "ctll/list.hpp"
@@ -36,8 +36,8 @@ namespace ctle {
 		typename States = nullptr_t,
 		typename StateDefinitions = ctll::list<>,
 		typename DerivesFrom = derives_from<>,
-		typename EofHandler = default_actions::eof<ReturnType>,
-		typename NoMatchHandler = default_actions::no_match<ReturnType>,
+		callable EofHandler = default_actions::eof(ReturnType::eof),
+		callable NoMatchHandler = default_actions::simple_return(ReturnType::no_match),
 		typename FileType = basic_file<char>
 	>
 	class lexer : public DerivesFrom
@@ -63,7 +63,7 @@ namespace ctle {
 		/**
 		 * @brief prototype of a match function as one is generated for each state.
 		 */
-		using match_signature_t = ReturnType (lexer::*)();
+		using match_signature_t = std::optional<ReturnType> (lexer::*)();
 		/**
 		 * @brief a pair of index / signature.
 		 */
@@ -71,7 +71,7 @@ namespace ctle {
 		/**
 		 * @brief current matching function (switched when state is switched).
 		 */
-		match_signature_t current_match_function{nullptr};	
+		match_signature_t current_match_function{nullptr};			
 		// self explanatory.
 		stack_t 				m_stack{};
 		file_range_t			m_current_file{};
@@ -85,7 +85,6 @@ namespace ctle {
 		 * @brief the text matched by lexer on the last call of lex(). Available to actions as well.
 		 */
 		string_t text{};
-
 
 		lexer() {
 			set_state(state_initial);
@@ -119,10 +118,16 @@ namespace ctle {
 		/**
 		 * @brief tells lexer to match another rule
 		 * 
-		 * @return auto return of the first rule which has action that returns.
+		 * @return return_t return of the first rule which has action that returns.
 		 */
-		auto lex() {
-			return std::pair{"", (this->*current_match_function)()};		
+		return_t lex() {
+			std::optional<return_t> retval{std::nullopt};
+			
+			do {
+				retval = (this->*current_match_function)();
+			} while (!retval);
+
+			return retval.value();		
 		}
 		/**
 		 * @brief adds a file to lexer stack.
@@ -174,7 +179,7 @@ namespace ctle {
 		 */
 		void less(size_t n = 0) {
 			n = (n) ? n : text.length();
-			std::advance(m_current_file.begin(), - n);
+			std::advance(m_current_file.begin, - n);
 			text.resize(text.length() - n);
 		}
 
@@ -203,15 +208,20 @@ namespace ctle {
 		 * 
 		 * @tparam State the identifier of this state.
 		 * @tparam Filter the filter to be used on rules.
-		 * @tparam StateEofHandler the eof handler to be used for this state (if std::nullptr_t default used). 
+		 * @tparam StateEofHandler the eof handler to be used for this state. 
 		 * @return assert_start wheter or not to assert the start of user defined states.
 		 */
-		template<int State, typename Filter, typename StateEofHandler, bool assert_start = true>
+		template<int State, typename Filter, callable StateEofHandler, bool assert_start = true>
 		static constexpr auto make_state_function_pair() {
 			if constexpr (assert_start)
 				static_assert(State >= state_reserved, "All states must begin at state_reserved.");
+			// the next four lines are there to not ICE gcc.
+			constexpr auto def_eof = EofHandler;
+			constexpr auto state_eof = StateEofHandler;
+			constexpr auto used_eof = callable_utils::get_default<state_eof, def_eof>();
+			constexpr auto eof_action = action<used_eof, return_t>{};
 			// take pointer to a method with a filtered set of rules.
-			constexpr auto function_ptr = &lexer::match_impl<get_default::type_t<StateEofHandler, EofHandler>, typename Filter::template filtered_t<Rules>>;
+			constexpr match_signature_t function_ptr = &lexer::match_impl<eof_action, typename Filter::template filtered_t<Rules>>;
 			// add this matching function to array of all matching functions.
 			return state_function_pair_t{State, function_ptr};
 		}
@@ -222,8 +232,8 @@ namespace ctle {
 		template<typename... StateDefinition>
 		static constexpr auto make_state_functions(ctll::list<StateDefinition...>) {
 			std::array retval{
-					make_state_function_pair<state_initial, initial_filter<StateDefinitions>, std::nullptr_t, false>(),
-					make_state_function_pair<StateDefinition::identifier(), state_filter<StateDefinition::identifier()>, typename StateDefinition::eof_action_t>()...
+					make_state_function_pair<state_initial, initial_filter<StateDefinitions>, EofHandler, false>(),
+					make_state_function_pair<StateDefinition::identifier(), state_filter<StateDefinition::identifier()>, StateDefinition::eof_action()>()...
 				};
 
 			sort(retval, [](const auto& a, const auto& b){ return a.first < b.first; });
@@ -233,41 +243,52 @@ namespace ctle {
 		/**
 		 * @brief the function from which the matching functions are generated.
 		 * 
+		 * @tparam eof_handler a handler if an EOF is encountered in this state.
 		 * @tparam filtered_rules set of rules to use in this function.
-		 * @return return_t return of match.
+		 * @return std::optional<return_t> return of match (if returning).
 		 */
-		template<typename eof_handler, typename filtered_rules>
-		return_t match_impl() {
-			return match<eof_handler>(filtered_rules());
+		template<callable eof_handler, typename filtered_rules>
+		std::optional<return_t> match_impl() {
+			static constexpr auto eof_handler_copy = eof_handler; // gcc shenanigans.
+			return match<eof_handler_copy>(filtered_rules());
+		}
+		/**
+		 * @brief a handler for a case of nothing being matched.
+		 * 
+		 * @return auto behaves like any other action.
+		 */
+		auto no_match_handler() {
+			static constexpr auto no_match_copy = NoMatchHandler;
+			static constexpr auto no_match_action = action<no_match_copy, return_t>{};
+			return no_match_action(*this);
 		}
 		/**
 		 * @brief real match function, uses fold statement to match all rules. Also moves input iterator by length of matched text.
 		 * 
+		 * @tparam eof_handler a handler if an EOF is encountered in this state.
 		 * @tparam rule_list rules to be used.
 		 * @return return_t value returned by action of a longest matched rule if it is returning, otherwise matches till such rule is encountered or EOF.
 		 */
-		template<typename eof_handler, typename... rule_list>
-		return_t match(ctll::list<rule_list...>) noexcept {
+		template<callable eof_handler, typename... rule_list>
+		std::optional<return_t> match(ctll::list<rule_list...>) noexcept {
 			std::optional<return_t> retval;
-			if (m_current_file.begin == m_current_file.end) {
-				retval = action<eof_handler, return_t>::execute(*this);
-			} else {
-				auto result = (variant_return_t{} | ... | variant_return_t{rule_list::match(m_current_file.begin, m_current_file.end)});
-				if (!result.length()) 
-					retval = action<NoMatchHandler, return_t>::execute(*this);
-
-				std::advance(m_current_file.begin, result.length());
-				update_text(result.to_view());
-
-				if (result.has_action()) 
-					retval = result.do_action(*this);
-			}
-
-			return (retval) ? std::move(retval.value()) : (this->*current_match_function)();
+			// handle eof
+			if (m_current_file.begin == m_current_file.end) return eof_handler(*this);
+			// try to match
+			auto result = (variant_return_t{} | ... | variant_return_t{rule_list::match(m_current_file.begin, m_current_file.end)});
+			// hadnle no_match
+			if (!result.length()) return no_match_handler();
+			// advance iterator in read stream (file)
+			std::advance(m_current_file.begin, result.length());
+			// update the stored text
+			update_text(result.to_view());
+			// handle matched rule w/o action.
+			if (!result.has_action()) return std::nullopt;
+			// execute an action if rule specifies one.
+			return (result.has_action() ? result.do_action(*this) : std::optional<return_t>{});
 		}
-
 		/**
-		 * @brief an array holding a function pointer for each state (something like virtual table).
+		 * @brief an array holding a function pointer for each state (something like a vtable).
 		 */
 		static constexpr auto m_state_functions{make_state_functions(StateDefinitions())};
 	};

@@ -7,6 +7,7 @@
 #include "states.h"
 #include "ctle_concepts.h"
 #include "match_result.h"
+#include "callable.h"
 
 #include <array>
 #include <algorithm>
@@ -18,10 +19,10 @@ namespace ctle {
 	 * @brief holds one rule.
 	 * 
 	 * @tparam Pattern a string representing the rule.
-	 * @tparam Action a class with overloaded operator() or std::nullptr_t if no action is needed. The action will be executed after this rule is matched.
+	 * @tparam Action a callable. The action will be executed after this rule is matched.
 	 * @tparam States an std::array of all states this rule is valid in.
 	 */
-	template <ctll::basic_fixed_string Pattern, class Action = std::nullptr_t, std::array States = std::array{state_initial}>
+	template <ctll::basic_fixed_string Pattern, callable action = empty_callable, std::array States = std::array{state_initial}>
 	class lexer_rule
 	{
 	public:
@@ -41,12 +42,13 @@ namespace ctle {
 		 * @param begin begin iterator.
 		 * @param end end iterator.
 		 * 
-		 * @return lexer_rule matched type and action pointer (if any).
+		 * @return a match_result, containing the matched text (and captures), and an action (if any).
 		 */
 		template <typename Ibegin, typename Iend>
 		static constexpr CTRE_FORCE_INLINE auto match(Ibegin begin, Iend end) {
 			using match_t = decltype(pattern_t::match_relaxed(begin, end));
-			return match_result<match_t, Action>{pattern_t::match_relaxed(begin, end)};
+			constexpr auto action_copy = action; // gcc buggy once again.
+			return match_result<match_t, action_copy>{pattern_t::match_relaxed(begin, end)};
 		}
 		/**
 		 * @brief return type of rule.

@@ -4,7 +4,7 @@
 #include "ctll/fixed_string.hpp"
 #include "lexer_re.h"
 #include "states.h"
-
+#include "callable.h"
 
 #include <array>
 #include <optional>
@@ -57,9 +57,9 @@ namespace ctle{
 
 	namespace detail {	
 		// glorified std::apply which allows for varargs before|| THE VARARGS ARE APPLIED BEFORE TUPLE
-		template<typename Callable, typename... Args, typename Tuple, size_t... idx>
+		template<callable Callable, typename... Args, typename Tuple, size_t... idx>
 		static constexpr CTRE_FORCE_INLINE auto apply_tuple(Tuple&& tuple, std::index_sequence<idx...>, Args&&... args) {
-			return Callable::execute(std::forward<Args>(args)..., tuple.template get<idx>()...);	
+			return Callable(std::forward<Args>(args)..., tuple.template get<idx>()...);	
 		}
 		// yes this only swaps pair right now, not needed for anything else atm.
 		template<typename Ty>
@@ -73,7 +73,7 @@ namespace ctle{
 	}
 
 	// glorified std::apply which allows for varargs before || THE VARARGS ARE APPLIED BEFORE TUPLE
-	template<typename Callable, typename... Args, typename Tuple>
+	template<callable Callable, typename... Args, typename Tuple>
 	static constexpr CTRE_FORCE_INLINE auto apply_tuple(Tuple&& tuple, Args&&... args) {
 		constexpr auto tuple_size = std::tuple_size_v<std::remove_reference_t<Tuple>>;
 		return detail::apply_tuple<Callable>(std::move(tuple), std::make_index_sequence<tuple_size>(), std::forward<Args>(args)...);	
@@ -82,14 +82,27 @@ namespace ctle{
 	// just a bubble sort, not expecting long sequences of states.
 	template<typename Indexable, typename Comparator>
 	static constexpr auto sort(Indexable& to_sort, Comparator&& compare) {
-		auto i = 0;
-		auto j = 0;
-		for (i = 0; i < to_sort.size(); ++i) {
-			for (j = 0; j < to_sort.size() - i - 1; ++j) {
+		for (auto i = 0; i < to_sort.size(); ++i) {
+			for (auto j = 0; j < to_sort.size() - i - 1; ++j) {
 				if (!compare(to_sort[j], to_sort[j+1]))
 					detail::swap(to_sort[j], to_sort[j+1]);
 			}
 		}
+	}
+
+	template<ctll::basic_fixed_string... input>
+	static constexpr auto concat() {
+		static_assert(sizeof...(input), "Concatenating no strings makes no sense.");
+		using char_t = decltype((typename decltype(input)::char_type{}, ...));
+		
+		char_t buffer[(0 + ... + input.size())] = {};
+		char_t* dest = &buffer[0];
+
+		const auto loop_body = [&dest](const auto& str) { for (auto c : str) *(dest++) = c; };
+		
+		(loop_body(input), ...);
+
+		return ctll::basic_fixed_string(buffer);
 	}
 
 	template<typename... Ty>

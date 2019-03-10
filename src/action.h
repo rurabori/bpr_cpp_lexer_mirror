@@ -4,7 +4,7 @@
 #include "ctll/fixed_string.hpp"
 #include "lexer_re.h"
 #include "states.h"
-
+#include "callable.h"
 
 #include <array>
 #include <optional>
@@ -16,16 +16,24 @@ namespace ctle{
 	 * 			and if it's empty, the caller won't return, if always returns, return ReturnType, if doesn't return,
 	 * 			specify return type as void.
 	 * 
-	 * @tparam Action an action class (whathever defines static method execute() and returns accordingly).
+	 * @tparam callable a constexpr constructible callable object.
 	 * @tparam ReturnType desired return_type if any.
 	 */
-	template<typename Action, typename ReturnType>
+	template<callable Action, typename ReturnType>
     class action {
         using optional_return_t = std::optional<ReturnType>;
     public:
+		/**
+		 * @brief 	wraps an operator of contained callable and provides some compile time errorchecking
+		 * 			as well as support for "void" in return type of said callable.
+		 * 
+		 * @tparam Args argpack to forward.
+		 * @param args 	argpack to forward.
+		 * @return optional_return_t a std::optional<ReturnType> empty only if wrapped has void return type.
+		 */
         template<typename... Args>
-        static optional_return_t execute(Args&&... args) {
-            using action_return_t = decltype(Action::execute(std::forward<Args>(args)...));
+        optional_return_t operator()(Args&&... args) const {
+            using action_return_t = decltype(Action(std::forward<Args>(args)...));
 			// distinguish between returning and non_returning ones.
 			if constexpr (!std::is_same_v<action_return_t, void>) {
 				// check if return type is correct.
@@ -33,35 +41,12 @@ namespace ctle{
                                 std::is_same_v<action_return_t, optional_return_t>, 
                                 "Action has a wrong return type."
                 );
-                return optional_return_t{Action::execute(std::forward<Args>(args)...)};
+                return optional_return_t{Action(std::forward<Args>(args)...)};
             } else {
-                Action::execute(std::forward<Args>(args)...);
+                Action(std::forward<Args>(args)...);
                 return optional_return_t{};
             }
         }
     };
-	/**
-	 * @brief a helper class, which is used to get a default action when the specified one is not null.
-	 * 
-	 */
-	class get_default {
-		// implementation
-		template<typename Ty, typename Default>
-		static constexpr auto get_default_impl() {
-			if constexpr (std::is_same_v<Ty, std::nullptr_t>)
-				return Default();
-			else
-				return Ty();
-		}
-	public:
-		/**
-		 * @brief returns Ty if Ty is not std::nullptr_t else returns Default
-		 * 
-		 * @tparam Ty 
-		 * @tparam Default 
-		 */
-		template<typename Ty, typename Default>
-		using type_t = decltype(get_default_impl<Ty, Default>());
-	};
 }
 #endif //CTLE_ACTION

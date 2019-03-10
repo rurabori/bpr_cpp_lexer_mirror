@@ -6,45 +6,26 @@
 #include "ctle_concepts.h"
 
 #include <optional>
-
-/**
- *	An action in this lexer is just a class/struct with a static method named execute. 
- *	Hence this macro, which lets us define the simple, non-templated cases somewhat easier.
- *  The reason it is a class/struct is, that we cannot pass templated functions as template template parameters,
- * 	but classes with templated methods are OK.
- * 
- */
-
-#define create_action(name, return_type, definition) struct name { static return_type execute definition }
+#include <iostream>
 
 namespace ctle::default_actions {
     
+	constexpr auto echo = [] (LexerInterface& b, auto&&... all) -> void {
+		(std::cout << ... << all.to_view()) << '\n';
+	};
 
-	create_action(echo, 
-		void, (LexerInterface& b, auto&&... all) {
-            (std::cout << ... << all.to_view()) << '\n';
-        }
-	);
-
-    template<typename ReturnType>
-	class eof {
-	public:
-		static std::optional<ReturnType> execute(LexerInterface& lexer) {
-			std::optional<ReturnType> retval{};
+	constexpr auto eof = [](auto eof_token){ 
+		return [eof_token](LexerInterface& lexer, auto&&...)  {
+			std::optional<decltype(eof_token)> retval;
 
 			if (!lexer.pop_file())
-				retval.emplace(ReturnType::eof);
+				retval.emplace(eof_token);
 
 			return retval;
-		}
+		}; 
 	};
 
-    template<typename ReturnType>
-	class no_match {
-	public:
-		static ReturnType execute(LexerInterface& lexer) {
-			return ReturnType::no_match;
-		}
-	};
+	constexpr auto simple_return = [](auto retval){ return [retval](auto&&...) { return retval; }; };
+
 } // namespace ctle
 #endif //CTLE_DEFAULT_ACTIONS
