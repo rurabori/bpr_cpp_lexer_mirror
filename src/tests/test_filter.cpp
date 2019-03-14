@@ -5,7 +5,7 @@
 
 #include <variant>
 
-int main() {
+int test_case() {
     // test filtering unique types 
     {
         using expected_result_t = std::variant<char,int,double,std::string>;
@@ -21,7 +21,7 @@ int main() {
             state1 = ctle::state_reserved, // all user defined enums must start here, lexer checks this at compile time.
             state2
         };
-        constexpr std::array state_definitions{ctle::state<estates>{state1, true}, ctle::state<estates>{state2, false}};
+        using state_definitions = ctll::list<ctle::state<estates::state1, true>, ctle::state<estates::state2, false> >;
         
         
         using rule_state_initial = ctle::lexer_rule<"si">;
