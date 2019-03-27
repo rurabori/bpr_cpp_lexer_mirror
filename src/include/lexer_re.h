@@ -29,7 +29,7 @@ namespace ctle {
      * 
      * @tparam input pattern from which re is created.
      */
-    template <ctll::basic_fixed_string input> 
+    template <ctll::fixed_string input> 
     CTRE_FLATTEN constexpr CTRE_FORCE_INLINE auto make_re() noexcept {
         constexpr auto _input = input; // workaround for GCC 9 bug 88092
         using tmp = typename ctll::parser<ctre::pcre, _input, ctre::pcre_actions>::template output<ctre::pcre_context<>>;
