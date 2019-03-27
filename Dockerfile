@@ -6,8 +6,20 @@ USER root
 # java install fails because of some weird update-alternatives error, this fixes the issue.
 RUN mkdir -p /usr/share/man/man1 
 RUN apt -y update
-RUN apt -y install apt-utils flex re2c curl default-jdk
-RUN curl https://www.antlr.org/download/antlr-4.7.2-complete.jar -o antlr.jar && mv antlr.jar /usr/local/lib
+RUN apt -y install apt-utils flex re2c curl default-jdk unzip cmake pkg-config uuid-dev uuid
+RUN curl https://www.antlr.org/download/antlr-4.7.2-complete.jar -oantlr.jar && mv antlr.jar /usr/local/lib
+
+RUN cd ~ \
+    && mkdir antlr_runtime \
+    && curl https://www.antlr.org/download/antlr4-cpp-runtime-4.7.2-source.zip -oantlr_runtime.zip \
+    && unzip antlr_runtime.zip -d antlr_runtime \
+    && rm antlr_runtime.zip \
+    && cd antlr_runtime \
+    && cmake . \
+    && make \
+    && make install \
+    && cd .. \
+    && rm -rf antlr_runtime
 
 RUN useradd -ms /bin/bash develop -p $(openssl passwd -1 "develop")
 RUN echo "develop   ALL=(ALL:ALL) ALL" >> /etc/sudoers
@@ -20,6 +32,5 @@ RUN echo "export CLASSPATH=\".:/usr/local/lib/antlr.jar:$CLASSPATH\"" >> ~/.bash
     && echo "alias antlr4='java -Xmx500M -cp \"/usr/local/lib/antlr.jar:$CLASSPATH\" org.antlr.v4.Tool'" >> ~/.bash_aliases \
     && . ~/.bashrc
 
-RUN curl https://www.antlr.org/download/antlr4-cpp-runtime-4.7.2-source.zip -o 
 VOLUME "/home/develop/project"
 WORKDIR "/home/develop/project"
