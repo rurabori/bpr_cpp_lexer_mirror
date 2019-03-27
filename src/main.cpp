@@ -91,7 +91,7 @@ int main(int argc, char const *argv[])
 
 	v22.add_file(argv[1]);
 
-	while (true) if (auto [matched, token] = v22.lex(); token == tokens::no_match || token == tokens::eof) break;
+	while (true) if (auto token = v22.lex(); token == tokens::no_match || token == tokens::eof) break;
 
 	auto x = &test<[](){}>;
 
