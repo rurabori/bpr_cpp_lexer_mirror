@@ -26,13 +26,16 @@ add_custom_command(
 add_executable(flex_test ${CMAKE_CURRENT_BINARY_DIR}/flex_test.cpp)
 
 add_custom_command(
-    OUTPUT antlr_test.cpp
+    OUTPUT antlr_test.cpp antlr_test.h
     COMMAND java -jar /usr/local/lib/antlr.jar -Dlanguage=Cpp -o ${CMAKE_CURRENT_BINARY_DIR} antlr_test.g4
+    #antlr insists on using the string literal, gcc doesn't like.
+    COMMAND sed -i -e "s/u8\"/\"/g" ${CMAKE_CURRENT_BINARY_DIR}/antlr_test.cpp
     DEPENDS ${CMAKE_SOURCE_DIR}/antlr/antlr_test.g4
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/antlr
 )
-add_executable(antlr_test ${CMAKE_CURRENT_BINARY_DIR}/antlr_test.cpp)
-target_include_directories(antlr_test PRIVATE /usr/)
+add_executable(antlr_test ${CMAKE_CURRENT_BINARY_DIR}/antlr_test.cpp antlr/antlr_main.cpp)
+target_include_directories(antlr_test PRIVATE /usr/local/include/antlr4-runtime ${CMAKE_CURRENT_BINARY_DIR})
+target_link_libraries(antlr_test PRIVATE /usr/local/lib/libantlr4-runtime.a)
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
