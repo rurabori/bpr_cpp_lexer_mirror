@@ -1,0 +1,15 @@
+version: '3'
+services:
+  ##### the develop image you've build
+  ### don't forget to open ports for your app
+  dev-image:
+    image: rura/bachelors/develop
+    ports:
+      - "2000:2000"
+    privileged: true
+    entrypoint: bash
+    container_name: devenv
+# mapping your project folder (.) to /home/develop/project    
+    volumes:
+      - "./:/home/develop/project"
+      

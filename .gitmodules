@@ -1,6 +1,6 @@
 [submodule "compile-time-regular-expressions"]
-	path = src/compile-time-regular-expressions
+	path = third-party/compile-time-regular-expressions
 	url = https://github.com/hanickadot/compile-time-regular-expressions.git
-[submodule "src/wise_enum"]
-	path = src/wise_enum
+[submodule "wise_enum"]
+	path = third-party/wise_enum
 	url = https://github.com/quicknir/wise_enum.git
