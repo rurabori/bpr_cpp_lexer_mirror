@@ -26,7 +26,6 @@ namespace ctle {
 	class lexer_rule
 	{
 	public:
-		using char_t = typename decltype(Pattern)::char_type;
 		using pattern_t = decltype(make_re<Pattern>());
 		/**
 		 * @brief prints the regex pattern.
