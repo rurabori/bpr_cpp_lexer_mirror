@@ -1,5 +1,5 @@
 #include "lexer.h"
-
+#include "tokens.h"
 #include <fstream>
 
 namespace definition {
@@ -299,16 +299,16 @@ int main(int argc, char const *argv[])
 
     std::fstream dump{"dump.txt", std::ios::out | std::ios::trunc};
     
-    definition::tokens token;
+    tokens token;
 
     size_t as{0};
     while (true) {
         token = x.lex();
-        if (token == definition::tokens::eof || token == definition::tokens::no_match)
+        if (token == tokens::eof || token == tokens::no_match)
             break;
     
         dump << ++as << ' ' << wise_enum::to_string(token) << '\n';
     }
 
-    return !(token == definition::tokens::eof); // 0 on success.
+    return !(token == tokens::eof); // 0 on success.
 }
