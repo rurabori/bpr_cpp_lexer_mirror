@@ -21,29 +21,29 @@ namespace definition {
         }
     };
 
-    constexpr ctll::basic_fixed_string NL             = "\n";
-    constexpr ctll::basic_fixed_string NOTNL          = ".";
-    constexpr ctll::basic_fixed_string ANY            = concat<"(?:",NOTNL,"|",NL,")">();
-    constexpr ctll::basic_fixed_string BACKSL         = "\\\\"; // escape the first with the second.
-    constexpr ctll::basic_fixed_string BOL            = "^";
-    constexpr ctll::basic_fixed_string EOL            = "\n";
-    constexpr ctll::basic_fixed_string LETTER         = "[A-Za-z_]";
-    constexpr ctll::basic_fixed_string ALNUM          = "[A-Za-z_0-9]";
-    constexpr ctll::basic_fixed_string DIGIT          = "[0-9]";
-    constexpr ctll::basic_fixed_string HEXDIGIT       = "[0-9A-Fa-f]";
-    constexpr ctll::basic_fixed_string DIGITS         = concat<"(?:",DIGIT,"+)">();
-    constexpr ctll::basic_fixed_string HEXDIGITS      = concat<"(?:",HEXDIGIT,"+)">();
-    constexpr ctll::basic_fixed_string SIGN           = concat<"(?:\\+|-)">();
-    constexpr ctll::basic_fixed_string ELL_SUFFIX     = "[lL](?:[lL]?)";
-    constexpr ctll::basic_fixed_string INT_SUFFIX     = concat<"(?:[uU]",ELL_SUFFIX,"?|",ELL_SUFFIX,"[uU]?)">();
-    constexpr ctll::basic_fixed_string FLOAT_SUFFIX   = "[flFL]";
-    constexpr ctll::basic_fixed_string STRCHAR        = concat<"[^\"\n",BACKSL,"]">();
-    constexpr ctll::basic_fixed_string ESCAPE         = concat<"(?:",BACKSL,ANY,")">();
-    constexpr ctll::basic_fixed_string QUOTE          = "[\"]";
-    constexpr ctll::basic_fixed_string CCCHAR         = concat<"[^\'\n",BACKSL,"]">();
-    constexpr ctll::basic_fixed_string TICK           = "[\']";
-    constexpr ctll::basic_fixed_string SPTAB          = "[ \t]";
-    constexpr ctll::basic_fixed_string PPCHAR         = concat<"(?:[^",BACKSL,"\n]|",BACKSL,NOTNL,")">();
+    constexpr ctll::fixed_string NL             = "\n";
+    constexpr ctll::fixed_string NOTNL          = ".";
+    constexpr ctll::fixed_string ANY            = concat<"(?:",NOTNL,"|",NL,")">();
+    constexpr ctll::fixed_string BACKSL         = "\\\\"; // escape the first with the second.
+    constexpr ctll::fixed_string BOL            = "^";
+    constexpr ctll::fixed_string EOL            = "\n";
+    constexpr ctll::fixed_string LETTER         = "[A-Za-z_]";
+    constexpr ctll::fixed_string ALNUM          = "[A-Za-z_0-9]";
+    constexpr ctll::fixed_string DIGIT          = "[0-9]";
+    constexpr ctll::fixed_string HEXDIGIT       = "[0-9A-Fa-f]";
+    constexpr ctll::fixed_string DIGITS         = concat<"(?:",DIGIT,"+)">();
+    constexpr ctll::fixed_string HEXDIGITS      = concat<"(?:",HEXDIGIT,"+)">();
+    constexpr ctll::fixed_string SIGN           = concat<"(?:\\+|-)">();
+    constexpr ctll::fixed_string ELL_SUFFIX     = "[lL](?:[lL]?)";
+    constexpr ctll::fixed_string INT_SUFFIX     = concat<"(?:[uU]",ELL_SUFFIX,"?|",ELL_SUFFIX,"[uU]?)">();
+    constexpr ctll::fixed_string FLOAT_SUFFIX   = "[flFL]";
+    constexpr ctll::fixed_string STRCHAR        = concat<"[^\"\n",BACKSL,"]">();
+    constexpr ctll::fixed_string ESCAPE         = concat<"(?:",BACKSL,ANY,")">();
+    constexpr ctll::fixed_string QUOTE          = "[\"]";
+    constexpr ctll::fixed_string CCCHAR         = concat<"[^\'\n",BACKSL,"]">();
+    constexpr ctll::fixed_string TICK           = "[\']";
+    constexpr ctll::fixed_string SPTAB          = "[ \t]";
+    constexpr ctll::fixed_string PPCHAR         = concat<"(?:[^",BACKSL,"\n]|",BACKSL,NOTNL,")">();
     
     constexpr bool allow_newline_string_lits = true;
 

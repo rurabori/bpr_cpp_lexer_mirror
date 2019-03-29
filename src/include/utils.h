@@ -90,7 +90,7 @@ namespace ctle{
 		}
 	}
 
-	template<ctll::basic_fixed_string... input>
+	template<ctll::fixed_string... input>
 	static constexpr auto concat() {
 		static_assert(sizeof...(input), "Concatenating no strings makes no sense.");
 		using char_t = decltype((input[0], ...));
@@ -102,7 +102,7 @@ namespace ctle{
 		
 		(loop_body(input), ...);
 
-		return ctll::basic_fixed_string(buffer);
+		return ctll::fixed_string(buffer);
 	}
 
 	template<typename... Ty>
