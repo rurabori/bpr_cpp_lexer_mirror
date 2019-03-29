@@ -22,7 +22,7 @@ namespace ctle {
 	 * @tparam Action a callable. The action will be executed after this rule is matched.
 	 * @tparam States an std::array of all states this rule is valid in.
 	 */
-	template <ctll::fixed_string Pattern, callable action = empty_callable, std::array States = std::array{state_initial}>
+	template <ctll::basic_fixed_string Pattern, callable action = empty_callable, std::array States = std::array{state_initial}>
 	class lexer_rule
 	{
 	public:
