@@ -1,3 +1,5 @@
+#ifndef TOKENS_DEFINITION
+#define TOKENS_DEFINITION
 #include "wise_enum.h"
 
 WISE_ENUM(tokens, (
@@ -123,3 +125,5 @@ WISE_ENUM(tokens, (
     TOK_STRING_LITERAL,
     TOK_CHAR_LITERAL
 );
+
+#endif // TOKENS_DEFINITION
