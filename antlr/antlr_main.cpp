@@ -11,9 +11,10 @@ int main(int argc, char const *argv[])
     const auto& vocabulary = lexer.getVocabulary();
    
     while (auto token = lexer.nextToken()) {
-        if (lexer.hitEOF)
+        auto tok_name = vocabulary.getSymbolicName(token->getType());
+        if (tok_name == "EOF")
             break;
-        std::cout << vocabulary.getSymbolicName(token->getType()) << '\n';
+        std::cout << tok_name  << ' ' << token->getText() << '\n';
     }
 
 
