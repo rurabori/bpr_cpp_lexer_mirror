@@ -5,15 +5,15 @@ fragment NOTNL : ~('\n');
 fragment ANY : .;
 fragment BACKSL : '\\';
 fragment EOL : NL;
-fragment LETTER : [A-Za-z_];
-fragment ALNUM : [A-Za-z_0-9];
+fragment LETTER : [A-Za-z_$];
+fragment ALNUM : [A-Za-z_0-9$];
 fragment DIGIT : [0-9];
 fragment HEXDIGIT : [0-9A-Fa-f];
 fragment DIGITS : ( DIGIT+ );
 fragment HEXDIGITS : ( HEXDIGIT+ );
 fragment SIGN : ( '+' | '-' );
 fragment ELL_SUFFIX : [lL]([lL]?);
-fragment INT_SUFFIX : ([uU] ELL_SUFFIX ?| ELL_SUFFIX [uU]?);
+fragment INT_SUFFIX : ([uU] ELL_SUFFIX ?| ELL_SUFFIX [uU] ?);
 fragment FLOAT_SUFFIX : [flFL];
 fragment QUOTE : '"';
 fragment TICK : '\'';
@@ -199,15 +199,15 @@ ERR_CHAR_LITERAL    : 'L'? TICK ( CCCHAR | ESCAPE )* BACKSL ?  {
                         throw std::runtime_error("unterminated char literal");
                     };
 PREPROCESSOR_COMMAND    : '#' 'line' SPTAB .*? NL { skip(); }
-                        | '#' PPCHAR *( BACKSL  NL  PPCHAR *)* BACKSL ? { skip(); };
+                        | '#' PPCHAR *( BACKSL '\r' ?  NL  PPCHAR *)* BACKSL ? { skip(); };
 
-WHITESPACE : [ \t\n\f\r]+ -> skip;
+WHITESPACE : ( [ \t\n\f\r] | BACKSL '\r' ? NL )+ -> skip;
 
   
   
 SINGLE_LINE_COMMENT : '//' NOTNL * -> skip;
-COMMENT : '/*' '*'*? '*/' { skip(); }
-        | '/*' '*'*? '*' {
+COMMENT : '/*' .*? '*/' { skip(); }
+        | '/*' .*? '*' {
             std::runtime_error("unterminated /""*...*""/ comment");
             skip();
         };

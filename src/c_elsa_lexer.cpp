@@ -22,19 +22,19 @@ namespace definition {
     };
 
     constexpr ctll::basic_fixed_string NL             = "\n";
-    constexpr ctll::basic_fixed_string NOTNL          = ".";
+    constexpr ctll::basic_fixed_string NOTNL          = "[^\r\n]";
     constexpr ctll::basic_fixed_string ANY            = concat<"(?:",NOTNL,"|",NL,")">();
     constexpr ctll::basic_fixed_string BACKSL         = "\\\\"; // escape the first with the second.
     constexpr ctll::basic_fixed_string BOL            = "^";
     constexpr ctll::basic_fixed_string EOL            = "\n";
-    constexpr ctll::basic_fixed_string LETTER         = "[A-Za-z_]";
-    constexpr ctll::basic_fixed_string ALNUM          = "[A-Za-z_0-9]";
+    constexpr ctll::basic_fixed_string LETTER         = "[A-Za-z_$]";
+    constexpr ctll::basic_fixed_string ALNUM          = "[A-Za-z_$0-9]";
     constexpr ctll::basic_fixed_string DIGIT          = "[0-9]";
     constexpr ctll::basic_fixed_string HEXDIGIT       = "[0-9A-Fa-f]";
     constexpr ctll::basic_fixed_string DIGITS         = concat<"(?:",DIGIT,"+)">();
     constexpr ctll::basic_fixed_string HEXDIGITS      = concat<"(?:",HEXDIGIT,"+)">();
     constexpr ctll::basic_fixed_string SIGN           = concat<"(?:\\+|-)">();
-    constexpr ctll::basic_fixed_string ELL_SUFFIX     = "[lL](?:[lL]?)";
+    constexpr ctll::basic_fixed_string ELL_SUFFIX     = "(?:[lL][lL]?)";
     constexpr ctll::basic_fixed_string INT_SUFFIX     = concat<"(?:[uU]",ELL_SUFFIX,"?|",ELL_SUFFIX,"[uU]?)">();
     constexpr ctll::basic_fixed_string FLOAT_SUFFIX   = "[flFL]";
     constexpr ctll::basic_fixed_string STRCHAR        = concat<"[^\"\n",BACKSL,"]">();
@@ -205,9 +205,9 @@ namespace definition {
                         lexer.less(1);
                         return TOK_DOT;
                     }>,
-                    lexer_rule<concat<LETTER,ALNUM,"*">(), simple_return(TOK_NAME)>,
-                    lexer_rule<concat<"[1-9][0-9]*",INT_SUFFIX,"?">(), simple_return(TOK_INT_LITERAL)>,
-                    lexer_rule<concat<"[0][0-7]*",INT_SUFFIX,"?">(), simple_return(TOK_INT_LITERAL)>,
+                    lexer_rule<concat<LETTER,ALNUM,"*+">(), simple_return(TOK_NAME)>,
+                    lexer_rule<concat<"[1-9][0-9]*+",INT_SUFFIX,"?">(), simple_return(TOK_INT_LITERAL)>,
+                    lexer_rule<concat<"[0][0-7]*+",INT_SUFFIX,"?">(), simple_return(TOK_INT_LITERAL)>,
                     lexer_rule<concat<"[0][xX][0-9A-Fa-f]+",INT_SUFFIX,"?">(), simple_return(TOK_INT_LITERAL)>,
                     lexer_rule<"[0][xX]", [](LexerInterface& lexer, auto capture) {
                         lexer.log(logger::levels::error, "hexadecimal literal with nothing after the 'x'");
@@ -219,11 +219,11 @@ namespace definition {
                     lexer_rule<concat<DIGITS,"\\.",DIGITS,"?[eE]",SIGN,"?">(), error_float_literal>,
                     lexer_rule<concat<DIGITS,"\\.","?[eE]",SIGN,"?">(), error_float_literal>,
                     lexer_rule<concat<"\\.",DIGITS,"[eE]",SIGN,"?">(), error_float_literal>,
-                    lexer_rule<concat<"L?",QUOTE,"((?:",STRCHAR,"|",ESCAPE,")*)",QUOTE>(),[](LexerInterface& lexer, auto all, auto content){
-                        lexer.text = content; // no need to store L or quotes in final text.
+                    lexer_rule<concat<"L?",QUOTE,"((?:",STRCHAR,"|",ESCAPE,")*+)",QUOTE>(),[](LexerInterface& lexer, auto all, auto content){
+                        //lexer.text = content; // no need to store L or quotes in final text.
                         return TOK_STRING_LITERAL;
                     }>,
-                    lexer_rule<concat<"L?",QUOTE,"(?:",STRCHAR,"|",ESCAPE,")*",EOL>(), [](LexerInterface& lexer, auto content) {
+                    lexer_rule<concat<"L?",QUOTE,"(?:",STRCHAR,"|",ESCAPE,")*+",EOL>(), [](LexerInterface& lexer, auto content) {
                         if constexpr (allow_newline_string_lits) {
                             lexer.log(logger::levels::warning,"string literal contains (unescaped) newline character; "
                                     "this is allowed for gcc-2 bug compatibility only "
@@ -235,39 +235,27 @@ namespace definition {
 
                         return TOK_STRING_LITERAL;
                     }>,
-                    lexer_rule<concat<"(?:",STRCHAR,"|",ESCAPE,")*",QUOTE>(), [](LexerInterface& lexer, auto content) {
+                    lexer_rule<concat<"(?:",STRCHAR,"|",ESCAPE,")*+",QUOTE>(), [](LexerInterface& lexer, auto content) {
                         lexer.set_state(state_initial);
                         return TOK_STRING_LITERAL;
                     }, std::array{states::BUGGY_STRING_LIT}>,
-                    lexer_rule<concat<"(?:",STRCHAR,"|",ESCAPE,")*",EOL>(), simple_return(TOK_STRING_LITERAL), std::array{states::BUGGY_STRING_LIT}>,
-                    lexer_rule<concat<"(?:",STRCHAR,"|",ESCAPE,")*",BACKSL,"?">(), error_string_literal, std::array{states::BUGGY_STRING_LIT}>,
-                    lexer_rule<concat<"L?",TICK,"(?:",CCCHAR,"|",ESCAPE,")*",TICK>(), simple_return(TOK_CHAR_LITERAL)>,
-                    lexer_rule<concat<"L?",TICK,"(?:",CCCHAR,"|",ESCAPE,")*",EOL>(), [](LexerInterface& lexer, auto content){
+                    lexer_rule<concat<"(?:",STRCHAR,"|",ESCAPE,")*+",EOL>(), simple_return(TOK_STRING_LITERAL), std::array{states::BUGGY_STRING_LIT}>,
+                    lexer_rule<concat<"(?:",STRCHAR,"|",ESCAPE,")*+",BACKSL,"?">(), error_string_literal, std::array{states::BUGGY_STRING_LIT}>,
+                    lexer_rule<concat<"L?",TICK,"(?:",CCCHAR,"|",ESCAPE,")*+",TICK>(), simple_return(TOK_CHAR_LITERAL)>,
+                    lexer_rule<concat<"L?",TICK,"(?:",CCCHAR,"|",ESCAPE,")*+",EOL>(), [](LexerInterface& lexer, auto content){
                         lexer.log(logger::levels::error,"character literal missing final \"'\"");
                         return TOK_CHAR_LITERAL;
                     }>,
-                    lexer_rule<concat<"L?",TICK,"(?:",CCCHAR,"|",ESCAPE,")*",BACKSL,"?">(), [](LexerInterface& lexer, auto content){
+                    lexer_rule<concat<"L?",TICK,"(?:",CCCHAR,"|",ESCAPE,")*+",BACKSL,"?">(), [](LexerInterface& lexer, auto content){
                         lexer.log(logger::levels::error,"unterminated character literal");
                         lexer.terminate();
                     }>,
-                    lexer_rule<concat<"#(?:line)?",SPTAB,".*",NL>(), [](LexerInterface& lexer, auto content) {
-                        //parseHashLine(yytext, yyleng);
-                        //whitespace();       // don't increment line count until after parseHashLine()
-                    }>,
-                    lexer_rule<concat<"#",PPCHAR,"*(?:",BACKSL,NL,PPCHAR,"*)*",BACKSL,"?">(), [](LexerInterface& lexer, auto content) {
-                        // treat it like whitespace, ignoring it otherwise
-                        //whitespace();
-                    }>,
-                    lexer_rule<"[ \t\n\f\v\r]+", [](LexerInterface& lexer, auto content)  {
-                        //whitespace();
-                    }>,
-                    lexer_rule<concat<"//",NOTNL,"*">(), [](LexerInterface& lexer, auto content) {
-                        //whitespace();
-                    }>,
-                    lexer_rule<"/\\*(?:[^*]|\\**[^*/])*\\*+/", [](LexerInterface& lexer, auto content) {
-                        //whitespace();
-                    }>,
-                    lexer_rule<"/\\*(?:[^*]|\\**[^*/])*\\**", [](LexerInterface& lexer, auto content) {
+                    lexer_rule<concat<"#(?:line)?",SPTAB,".*+",NL>()>,
+                    lexer_rule<concat<"#",PPCHAR,"*+(?:\\\\\r?\n",PPCHAR,"*+)*+",BACKSL,"?">()>,
+                    lexer_rule<"(?:[ \t\n\f\v\r]|\\\\\r?\n)+">,
+                    lexer_rule<concat<"//",NOTNL,"*+">()>,
+                    lexer_rule<"/\\*.*?\\*/">,
+                    lexer_rule<"/\\*.*?\\*", [](LexerInterface& lexer, auto content) {
                         lexer.log(logger::levels::error,"unterminated /""*...*""/ comment");
                         lexer.terminate();
                     }>,
@@ -283,7 +271,9 @@ namespace definition {
         rules,
         states,
         state_definitions,  
-        derives_from<logger, terminator>
+        derives_from<logger, terminator>,
+        default_actions::eof(tokens::eof),
+        [](auto& lexer) { throw std::runtime_error("No matching input found,"); }
     >;
 
 }
@@ -297,8 +287,6 @@ int main(int argc, char const *argv[])
 
     x.add_file(argv[1]);
 
-    std::fstream dump{"dump.txt", std::ios::out | std::ios::trunc};
-    
     tokens token;
 
     size_t as{0};
@@ -307,7 +295,7 @@ int main(int argc, char const *argv[])
         if (token == tokens::eof || token == tokens::no_match)
             break;
     
-        dump << ++as << ' ' << wise_enum::to_string(token) << '\n';
+        std::cout << wise_enum::to_string(token) << ' ' << x.text << '\n';
     }
 
     return !(token == tokens::eof); // 0 on success.

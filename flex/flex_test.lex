@@ -62,10 +62,10 @@ BOL           ^
 EOL           {NL}
 
 /* letter or underscore */
-LETTER        [A-Za-z_]
+LETTER        [A-Za-z_$]
 
 /* letter or underscore or digit */
-ALNUM         [A-Za-z_0-9]
+ALNUM         [A-Za-z_0-9$]
 
 /* decimal digit */
 DIGIT         [0-9]
@@ -386,7 +386,7 @@ PPCHAR        ([^\\\n]|{BACKSL}{NOTNL})
 
   /* other preprocessing: ignore it */
   /* trailing optional baskslash to avoid backing up */
-"#"{PPCHAR}*({BACKSL}{NL}{PPCHAR}*)*{BACKSL}?   {
+"#"{PPCHAR}*({BACKSL}\r?{NL}{PPCHAR}*)*{BACKSL}?   {
   // treat it like whitespace, ignoring it otherwise
 }
 
@@ -395,7 +395,7 @@ PPCHAR        ([^\\\n]|{BACKSL}{NOTNL})
    * could be seen as part of the mapping from physical source file
    * characters to the basic character set (cppstd 2.1 para 1 phase 1),
    * except that it doesn't happen for chars in string/char literals... */
-[ \t\n\f\v\r]+  {
+([ \t\n\f\v\r]|{BACKSL}\r?{NL})+  {
 }
 
   /* C++ comment */
@@ -437,7 +437,7 @@ int main(int argc, char const *argv[])
     yyin = fopen(argv[1], "r");
    
     while (tokens token = static_cast<tokens>(yylex()))
-        std::cout << wise_enum::to_string(token) << '\n';
+        std::cout << wise_enum::to_string(token) << ' ' << yytext << '\n';
 
     return 0;
 }
