@@ -12,7 +12,6 @@
 
 #include "ctre.hpp"
 #include "ctll/list.hpp"
-#include "wise_enum.h"
 
 #include <optional>
 #include <variant>

@@ -63,13 +63,10 @@ namespace definition {
         lexer.terminate();
     };
 
-
-
     using state_definitions =   
         ctll::list<
             state<BUGGY_STRING_LIT, true, error_string_literal>
         >;
-
     
     using rules = ctll::list<
                     lexer_rule<"asm", simple_return(TOK_ASM)>,

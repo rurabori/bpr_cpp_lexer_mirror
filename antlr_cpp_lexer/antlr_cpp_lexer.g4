@@ -1,4 +1,4 @@
-lexer grammar antlr_test;
+lexer grammar antlr_cpp_lexer;
 
 fragment NL : '\n';
 fragment NOTNL : ~('\n');

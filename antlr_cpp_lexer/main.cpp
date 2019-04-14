@@ -1,4 +1,4 @@
-#include "antlr_test.h"
+#include "antlr_cpp_lexer.h"
 #include "ANTLRFileStream.h"
 
 int main(int argc, char const *argv[])
@@ -6,7 +6,7 @@ int main(int argc, char const *argv[])
     if (argc < 2) return 1;
 
     antlr4::ANTLRFileStream file{argv[1]};
-    antlr_test lexer{&file};
+    antlr_cpp_lexer lexer{&file};
 
     const auto& vocabulary = lexer.getVocabulary();
    
@@ -16,7 +16,6 @@ int main(int argc, char const *argv[])
             break;
         std::cout << tok_name  << ' ' << token->getText() << '\n';
     }
-
 
     return 0;
 }

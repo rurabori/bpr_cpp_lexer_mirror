@@ -103,7 +103,7 @@ namespace ctle {
 
     template <typename CharT>
     bool basic_file<CharT>::map_memory() noexcept {
-        return (m_data.data = (CharT*)mmap(NULL, m_data.size, PROT_READ, MAP_PRIVATE | MAP_FILE | MAP_POPULATE, m_fd, 0)) != nullptr;
+        return (m_data.data = (CharT*)mmap(NULL, m_data.size, PROT_READ, MAP_PRIVATE | MAP_FILE, m_fd, 0)) != nullptr;
     }
 }
 
