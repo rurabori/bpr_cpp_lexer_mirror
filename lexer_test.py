@@ -10,14 +10,18 @@ from prettytable import PrettyTable
 
 def find_files(folder, file_filter):
     regex = re.compile(file_filter)
-    return [os.path.abspath(basedir+'/'+src) for basedir, _, files in os.walk(folder) for src in files if regex.match(src)]
+    return [os.path.abspath(basedir+'/'+src) \
+                for basedir, _, files in os.walk(folder) \
+                    for src in files \
+                        if regex.match(src)]
 
 def fake_preprocess(source, *args):
     return os.path.abspath(source)
 
 def real_preprocess(source, destination = '__TEMP_LEXER_PREPROCESSED__.tmp'):
     #... UTF-16, windows, plz stop...
-    with open(source, mode='r') as src, open(destination, mode='w', encoding='ascii') as dest:
+    with    open(source, mode='r') as src, \
+            open(destination, mode='w', encoding='ascii') as dest:
         for x in src:
             dest.write(x)
     return os.path.abspath(destination)
@@ -30,7 +34,10 @@ class lexer:
 
     def lex_file(self, src):
         return [output.strip() \
-                    for output in subprocess.check_output([self.path, src], stderr=subprocess.STDOUT).decode('ascii', 'ignore').split('\n') \
+                    for output in subprocess.check_output(  [self.path, src], \
+                                                            stderr=subprocess.STDOUT)
+                                                            .decode('ascii', 'ignore')
+                                                            .split('\n') \
                         if len(output)]
 
 class lexer_result_accumulator:
@@ -89,13 +96,14 @@ class lexer_tester:
             print("Lexing: {}".format(src))
             base = base_lexer.lex_file(src)
             for lexer in other_lexers:
-                if not output_diff(base, lexer.lex_file(src), fromfile=base_lexer.lexer.id, tofile=lexer.lexer.id):
+                if not output_diff( base, lexer.lex_file(src),
+                                    fromfile=base_lexer.lexer.id, 
+                                    tofile=lexer.lexer.id):
                     pass
                     #raise Exception()
 
         all_lexers = [base_lexer] + other_lexers
         
-
         results = table()
 
         results.header = ['source', 'size']+[x.lexer.id for x in all_lexers]
@@ -117,9 +125,12 @@ class lexer_tester:
         results.to_csv(csv_name)
 
 def main(args):
-    tester = lexer_tester(os.path.abspath(args.base_lexer), [os.path.abspath(lexer) for lexer in args.lexers])
+    tester = lexer_tester(  os.path.abspath(args.base_lexer), 
+                            [os.path.abspath(lexer) for lexer in args.lexers])
 
-    to_process = [os.path.abspath(src) for src in args.files] + [src for folder in args.folders for src in find_files(folder, args.folder_filter)]
+    to_process = [os.path.abspath(src) for src in args.files] + \
+                 [src for folder in args.folders \
+                        for src in find_files(folder, args.folder_filter)]
 
     tester.run(to_process, args.csv_name)
 
