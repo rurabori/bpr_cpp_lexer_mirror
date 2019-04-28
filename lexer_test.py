@@ -5,8 +5,7 @@ import subprocess
 import shutil
 import difflib
 import time
-from prettytable import PrettyTable
-
+from table import table
 
 def find_files(folder, file_filter):
     regex = re.compile(file_filter)
@@ -19,7 +18,6 @@ def fake_preprocess(source, *args):
     return os.path.abspath(source)
 
 def real_preprocess(source, destination = '__TEMP_LEXER_PREPROCESSED__.tmp'):
-    #... UTF-16, windows, plz stop...
     with    open(source, mode='r') as src, \
             open(destination, mode='w', encoding='ascii') as dest:
         for x in src:
@@ -33,12 +31,11 @@ class lexer:
         self.id = identifier if identifier else self.path.split('/')[-1]
 
     def lex_file(self, src):
-        return [output.strip() \
-                    for output in subprocess.check_output(  [self.path, src], \
-                                                            stderr=subprocess.STDOUT)
-                                                            .decode('ascii', 'ignore')
-                                                            .split('\n') \
-                        if len(output)]
+        return [output.strip() for output in
+                    subprocess.check_output(  [self.path, src],
+                        stderr=subprocess.STDOUT).decode('ascii', 'ignore')
+                                                 .split('\n') \
+                            if len(output)]
 
 class lexer_result_accumulator:
     def __init__(self, lexer, preproccess=False):
@@ -58,7 +55,7 @@ class lexer_result_accumulator:
         return retval
 
 def output_diff(a, b, **kwargs):
-    retval = True
+    retval = True  
     for line in difflib.context_diff(a, b, **kwargs): 
         print(line)
         retval = False
@@ -66,34 +63,18 @@ def output_diff(a, b, **kwargs):
     return retval
 
 
-class table:
-    def __init__(self):
-        self.header = []
-        self.rows = []
-
-    def __repr__(self):
-        table = PrettyTable(self.header)
-        for row in self.rows:
-            table.add_row(row)
-        return str(table)
-
-    def to_csv(self, csv_name):
-        with open(csv_name, 'w') as f:
-            f.write(','.join(self.header) + '\n')
-            for row in self.rows:
-                f.write(','.join([str(x) for x in row]) + '\n')
 
 class lexer_tester:
     def __init__(self, base_lexer, other_lexers):
         self.base_lexer = lexer(base_lexer)
         self.other_lexers = [lexer(x) for x in other_lexers]
 
-    def run(self, to_proccess, csv_name):
+    def run(self, to_proccess):
         base_lexer = lexer_result_accumulator(self.base_lexer)
         other_lexers = [lexer_result_accumulator(x) for x in self.other_lexers]
         
         for src in to_proccess:
-            print("Lexing: {}".format(src))
+            print("Lexing : {}".format(src))
             base = base_lexer.lex_file(src)
             for lexer in other_lexers:
                 if not output_diff( base, lexer.lex_file(src),
@@ -105,24 +86,17 @@ class lexer_tester:
         all_lexers = [base_lexer] + other_lexers
         
         results = table()
-
+        #add header
         results.header = ['source', 'size']+[x.lexer.id for x in all_lexers]
 
-        accumulator = {x.lexer.id : 0 for x in all_lexers}
-        for src in to_proccess:
-            row = [src , str(os.path.getsize(src))]
-            for lexer in all_lexers:
-                lex_time = lexer.lexed_sources[src]
-                accumulator[lexer.lexer.id] += lex_time
-                row.append(lex_time)
-            results.rows.append(row)
+        results.rows =  [[src, str(os.path.getsize(src))] + \
+                            [lexer.lexed_sources[src] \
+                                for lexer in all_lexers] \
+                                    for src in to_proccess]
 
+        results.rows.append(['all', '+++'] + [str(sum(lexer.lexed_sources.values())) for lexer in all_lexers])
+        return results
 
-        results.rows.append(['all', '+++'] + [accumulator[x.lexer.id] for x in all_lexers])
-
-        print(results)
-
-        results.to_csv(csv_name)
 
 def main(args):
     tester = lexer_tester(  os.path.abspath(args.base_lexer), 
@@ -132,8 +106,13 @@ def main(args):
                  [src for folder in args.folders \
                         for src in find_files(folder, args.folder_filter)]
 
-    tester.run(to_process, args.csv_name)
+    results = [tester.run(to_process) for x in range(args.num_runs)]
 
+    for result in results:
+        print(result)
+
+    results[0].to_csv(args.csv_name)
+    results[0].plot('a.png')
 
 
 if __name__ == '__main__':
@@ -143,6 +122,7 @@ if __name__ == '__main__':
     parser.add_argument('--files', dest='files', type=str, nargs='+', default=[], help='A list of files to lex.')
     parser.add_argument('--folders', dest='folders', type=str, nargs='+', default=[], help='A list of folders to lex.')
     parser.add_argument('--folder_filter', dest='folder_filter', type=str, default='.*', help='A regex to match against filenames.')
+    parser.add_argument('--num-runs', dest='num_runs', type=int, default=1, help='How many times the tests should be ran.')
     parser.add_argument('--csv_name', dest='csv_name', type=str, default='output.csv', help='A name of csv to output.')
 
     main(parser.parse_args())
