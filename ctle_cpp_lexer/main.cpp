@@ -243,7 +243,7 @@ int main(int argc, char const* argv[]) {
 
     definition::lexer_definition x{};
 
-    x.add_file(argv[1]);
+    x.push_file(argv[1]);
 
     tokens token;
 
