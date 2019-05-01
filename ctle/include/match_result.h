@@ -4,125 +4,85 @@
 #include "action.h"
 #include "callable.h"
 
-#include <variant>
+#include <tuple>
+#include <array>
 #include <optional>
 
 namespace ctle {
-
 /**
- * @brief A class representing an empty result.
+ * @brief A class representing any kind of match result that can be obtained by calling rule::match
+ * in a lexer.
  *
- * @tparam CharT Used to generate a view of right characters.
- * @tparam ReturnT Used to generate the right optional retval of do_action.
+ * @tparam ContainerT A container that can store all the posible retvals of rule::match. This is
+ * probably an std::array, that has size equal to maximal number of captures in a rule in a given
+ * lexer.
+ * @tparam SigT a signature of an action that can consume the container.
  */
-template<typename CharT, typename ReturnT>
-struct empty_match_result
-{
-    /**
-     * @brief get a view of the match.
-     *
-     * @return a std::(w)string_view
-     */
-    auto to_view() const noexcept { return std::basic_string_view<CharT>{}; }
-    /**
-     * @brief get length of current match.
-     *
-     * @return length of the current match.
-     */
-    auto length() const noexcept { return to_view().length(); }
-
-    std::optional<ReturnT> do_action(auto&) { return std::nullopt; }
-};
-
-/**
- * @brief A class encapsulating a result of match operation. Containing the match itself as well as
- * the action.
- *
- * @tparam ResultT the type of result from regex match.
- * @tparam FunctionT the type of function provided.
- */
-template<typename ResultT, typename FunctionT>
+template<typename ContainerT, typename SigT>
 class match_result
 {
-    /** @brief the result of a match. */
-    ResultT m_result;
-    /** @brief a callable. */
-    FunctionT m_action;
+    /**
+     * @brief the type used to represent matched text. Usually a std::basic_string_view
+     *
+     */
+    using value_type = typename ContainerT::value_type;
+    ContainerT m_results;
+    /**
+     * @brief an action that is executed if any rule has matched.
+     *
+     */
+    SigT m_action{nullptr};
+    /**
+     * @brief Internal impl of ctor.
+     */
+    template<typename Ty, size_t... idx>
+    match_result(Ty&& data, SigT action, std::index_sequence<idx...>)
+      : m_results{data.template get<idx>()...}, m_action{action} {}
 
 public:
     /**
-     * @brief Construct a new match_result.
+     * @brief Construct a new match_result from the result of rule::match (unpacks a tuple into the
+     * underlying container).
      *
-     * @param result the result of a regex match.
-     * @param action a callable to execute on do_action.
+     * @tparam Ty
+     * @param data a tuple-like object returned from rule::match.
+     * @param action an action to be executed if this result is chosen as the matched one.
      */
-    match_result(ResultT&& result, FunctionT action)
-      : m_result{std::move(result)}, m_action{action} {}
+    template<typename Ty>
+    match_result(Ty&& data, SigT action)
+      : match_result(std::move(data), action, std::make_index_sequence<std::tuple_size_v<Ty>>()) {}
     /**
-     * @brief get a view of the match.
+     * @brief Ctor for an empty result. The action shouldn't be executed if this is the case.
      *
-     * @return a std::(w)string_view
      */
-    auto to_view() const { return m_result.to_view(); }
+    constexpr match_result(SigT action) : m_results{value_type{}}, m_action{action} {}
     /**
-     * @brief get length of current match.
+     * @brief executes the stored action.
      *
-     * @return length of the current match.
+     * @param lexer a reference to the lexer (forwarded to action itself).
+     * @return the return value of executed action.
      */
-    auto length() const { return to_view().length(); }
+    auto do_action(auto& lexer) { return m_action(lexer, std::move(m_results)); }
     /**
-     * @brief executes an action for this rule. While passing a reference to its lexer and the
-     * matched text (and captures if any provided).
+     * @brief Converts the result into a std::basic_string_view.
      *
-     * @param lexer a reference to the lexer.
-     * @return whatever the action returns.
+     * @return auto A view of this result.
      */
-    auto do_action(auto& lexer) { return m_action(lexer, std::move(m_result)); }
-};
-// CTAD
-template<typename ResultT, typename FunctionT>
-match_result(ResultT&&, FunctionT)->match_result<ResultT, FunctionT>;
-
-/**
- * @brief a small wrapper around std::variant.
- *
- * @tparam Args variadic pack passed to std::variant.
- */
-template<typename EmptyMatch, typename... Args>
-class variant_match_wrapper
-{
-    using variant_t = std::variant<EmptyMatch, Args...>;
-    variant_t m_match; //< holds all possible match results.
-public:
-    variant_match_wrapper() : m_match{EmptyMatch{}} {}
-    variant_match_wrapper(variant_match_wrapper&& other) : m_match{std::move(other.m_match)} {}
-    variant_match_wrapper(variant_t&& match) : m_match{std::move(match)} {}
-
+    auto to_view() const noexcept { return m_results[0]; }
     /**
-     * @see match_result::length()
-     */
-    auto length() const noexcept {
-        return std::visit([](auto&& value) { return value.length(); }, m_match);
-    }
-    auto to_view() const noexcept {
-        return std::visit([](auto&& value) { return value.to_view(); }, m_match);
-    }
-    /**
-     * @see match_result::do_action()
-     */
-    auto do_action(LexerInterface& lexer) noexcept {
-        return std::visit([&lexer](auto&& value) { return value.do_action(lexer); }, m_match);
-    }
-    /**
-     * @brief used in fold expression by lexer.
+     * @brief returns the length of this result.
      *
-     * @param other other match result.
-     * @return the result which matched more text.
+     * @return length of this result.
      */
-    variant_match_wrapper operator|(variant_match_wrapper other) noexcept {
-        if (length() < other.length()) m_match.swap(other.m_match);
-
-        return std::move(*this);
+    auto length() const noexcept { return to_view().length(); }
+    /**
+     * @brief used in a fold expresion.
+     *
+     * @param other the result to compare to.
+     * @return the one that is longer.
+     */
+    match_result operator|(match_result other) {
+        return (length() < other.length()) ? other : *this;
     }
 };
 } // namespace ctle

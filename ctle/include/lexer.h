@@ -1,17 +1,13 @@
 #ifndef CTLE_LEXER
 #define CTLE_LEXER
 
-#include "lexer_rule.h"
-#include "type_filter.h"
+#include "match_result.h"
 #include "rule_filters.h"
 #include "utils.h"
 #include "ctle_concepts.h"
 #include "default_actions.h"
 #include "action.h"
 #include "file_stack.h"
-
-#include "ctre.hpp"
-#include "ctll/list.hpp"
 
 #include <optional>
 #include <variant>
@@ -77,8 +73,12 @@ class lexer : public DerivesFrom
      *
      * @tparam Ty the type of result for the regular expression of a rule.
      */
-    template<typename Ty>
-    using action_signature = std::optional<ReturnT> (*)(lexer&, Ty&&);
+    using storage_t = std::array<std::basic_string_view<typename FileType::char_t>,
+                                 capture::max<file_iterator_t, file_iterator_t>(Rules{})>;
+
+    using action_signature_t = std::optional<ReturnT> (*)(lexer&, storage_t&&);
+    using match_result_t = match_result<storage_t, action_signature_t>;
+
     /**
      * @brief an implementation of a rule in the lexer.
      *
@@ -98,10 +98,6 @@ class lexer : public DerivesFrom
          */
         using result_t = decltype(match_pattern(std::declval<file_range_t>()));
         /**
-         * @brief a signature of a function that represents an action for this rule.
-         */
-        using action_signature_t = action_signature<result_t>;
-        /**
          * @brief a wrapper around an actual call to the action. This way we can get function
          * pointers to lambdas with captures etc.
          *
@@ -109,9 +105,10 @@ class lexer : public DerivesFrom
          * @param p a result of lexer_rule::match.
          * @return std::optional<ReturnT> behaves as every action.
          */
-        static std::optional<ReturnT> action_impl(lexer& l, result_t&& p) {
+        static std::optional<ReturnT> action_impl(lexer& l, storage_t&& p) {
             static constexpr auto tmp = Rule::action;
-            return apply_tuple<action<tmp, ReturnT>{}>(std::move(p), l);
+            return apply_tuple<action<tmp, ReturnT>{}, std::tuple_size_v<result_t>>(std::move(p),
+                                                                                    l);
         }
         /**
          * @brief gets the correct pointer to a function. If rule has action, returns a pointer to
@@ -122,7 +119,7 @@ class lexer : public DerivesFrom
          */
         static constexpr action_signature_t get_action() {
             if constexpr (Rule::action.empty())
-                return &no_action<result_t>;
+                return &no_action<storage_t>;
             else
                 return &action_impl;
         }
@@ -136,22 +133,13 @@ class lexer : public DerivesFrom
          * @return auto a match_result, containing a match and an action.
          */
         static auto match(file_range_t input) {
-            return match_result{match_pattern(input), get_action()};
+            return match_result_t{match_pattern(input), get_action()};
         }
         /**
          * @brief the return type of calling match.
          */
         using return_t = decltype(match(std::declval<file_range_t>()));
     };
-    /**
-     * @brief this is a type that can hold any of the possible match results. It is constructed by
-     * constructing an unique list of every return value possible from rule::match.
-     *
-     */
-    using result_t = unique_from_list_to_type_t<
-      variant_match_wrapper,
-      decltype(ctll::concat(ctll::list<empty_match_result<typename FileType::char_t, ReturnT>>{},
-                            get_return_list(wrap_rule<rule>(Rules{}))))>;
 
 public:
     using state_t = StateT;
@@ -162,7 +150,7 @@ public:
      */
     string_t text{};
 
-    lexer() { set_state(state_initial); }
+    lexer() noexcept { set_state(state_initial); }
     /**
      * @brief Set the state of lexer.
      *
@@ -170,7 +158,7 @@ public:
      * @return true on success.
      * @return false if no such state exists.
      */
-    bool set_state(int state) {
+    bool set_state(int state) noexcept {
         auto it = std::lower_bound(m_state_functions.cbegin(), m_state_functions.cend(),
                                    state_function_pair_t{state, nullptr},
                                    [](const auto& a, const auto& b) { return a.first < b.first; });
@@ -187,7 +175,7 @@ public:
      * @return true on success.
      * @return false if no such state exists.
      */
-    bool set_state(state_t state) { return set_state(static_cast<int>(state)); }
+    bool set_state(state_t state) noexcept { return set_state(static_cast<int>(state)); }
     /**
      * @brief tells lexer to match another rule
      *
@@ -207,7 +195,7 @@ public:
      * @return false file creation failed.
      */
     template<typename... Args>
-    bool push_file(Args&&... c_args) {
+    bool push_file(Args&&... c_args) noexcept {
         // store the current location of lexed file.
         m_stack.store(m_current_file.begin);
         // create a new one.
@@ -243,7 +231,7 @@ public:
      *
      * @param n how many characters should be returned, if 0 all matched text is returned.
      */
-    void less(size_t n = 0) {
+    void less(size_t n = 0) noexcept {
         n = (n) ? n : text.length();
         std::advance(m_current_file.begin, -n);
         text.resize(text.length() - n);
@@ -255,7 +243,7 @@ private:
      *
      * @param view the view of the current match.
      */
-    void update_text(auto view) {
+    void update_text(auto view) noexcept {
         if (m_more) {
             text.append(view);
             m_more = false;
@@ -267,7 +255,7 @@ private:
      * @brief resets the current iterators to the new file. Needs to be called after each successful
      * stack operation (push and pop).
      */
-    void reset_iterators() { m_current_file = m_stack.top(); }
+    void reset_iterators() noexcept { m_current_file = m_stack.top(); }
     /**
      * @brief create one pair of identifier/function
      *
@@ -343,7 +331,8 @@ private:
         // handle eof
         if (m_current_file.begin == m_current_file.end) return eof_handler(*this);
         // try to match
-        auto result = (result_t{} | ... | result_t{rule<rule_list>::match(m_current_file)});
+        auto result
+          = (match_result_t{&no_action<storage_t>} | ... | rule<rule_list>::match(m_current_file));
         // hadnle no_match
         if (!result.length()) return no_match_handler();
         // advance iterator in read stream (file)

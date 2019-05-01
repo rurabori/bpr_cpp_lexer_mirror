@@ -1,13 +1,12 @@
 #ifndef CTLE_UTILS
 #define CTLE_UTILS
-#include "ctre.hpp"
-#include "ctll/fixed_string.hpp"
-#include "lexer_re.h"
 #include "states.h"
 #include "callable.h"
 
+#include <ctll/list.hpp>
+#include <ctll/fixed_string.hpp>
+#include <ctll/utilities.hpp>
 #include <array>
-#include <optional>
 
 namespace ctle {
 /**
@@ -56,9 +55,9 @@ constexpr bool contains(auto is_in) {
 namespace detail {
     // glorified std::apply which allows for varargs before|| THE VARARGS ARE APPLIED BEFORE TUPLE
     template<callable Callable, typename... Args, typename Tuple, size_t... idx>
-    static constexpr CTRE_FORCE_INLINE auto apply_tuple(Tuple&& tuple, std::index_sequence<idx...>,
+    static constexpr CTLL_FORCE_INLINE auto apply_tuple(Tuple&& tuple, std::index_sequence<idx...>,
                                                         Args&&... args) {
-        return Callable(std::forward<Args>(args)..., tuple.template get<idx>()...);
+        return Callable(std::forward<Args>(args)..., std::get<idx>(tuple)...);
     }
     // yes this only swaps pair right now, not needed for anything else atm.
     template<typename Ty>
@@ -72,10 +71,9 @@ namespace detail {
 } // namespace detail
 
 // glorified std::apply which allows for varargs before || THE VARARGS ARE APPLIED BEFORE TUPLE
-template<callable Callable, typename... Args, typename Tuple>
-static constexpr CTRE_FORCE_INLINE auto apply_tuple(Tuple&& tuple, Args&&... args) {
-    constexpr auto tuple_size = std::tuple_size_v<std::remove_reference_t<Tuple>>;
-    return detail::apply_tuple<Callable>(std::move(tuple), std::make_index_sequence<tuple_size>(),
+template<callable Callable, size_t NArgs, typename... Args, typename Tuple>
+static constexpr CTLL_FORCE_INLINE auto apply_tuple(Tuple&& tuple, Args&&... args) {
+    return detail::apply_tuple<Callable>(std::move(tuple), std::make_index_sequence<NArgs>(),
                                          std::forward<Args>(args)...);
 }
 
@@ -89,7 +87,7 @@ static constexpr auto sort(Indexable& to_sort, Comparator&& compare) {
     }
 }
 
-template<ctll::basic_fixed_string... input>
+template<ctll::fixed_string... input>
 static constexpr auto concat() {
     static_assert(sizeof...(input), "Concatenating no strings makes no sense.");
     using char_t = decltype((input[0], ...));
@@ -103,19 +101,66 @@ static constexpr auto concat() {
 
     (loop_body(input), ...);
 
-    return ctll::basic_fixed_string(buffer);
+    return ctll::fixed_string(buffer);
 }
+
+namespace capture {
+    /**
+     * @brief Used in a fold expression to count captures in a regex.
+     *
+     */
+    class count
+    {
+        size_t m_count;
+
+    public:
+        /**
+         * @brief Constructor.
+         *
+         */
+        constexpr count(size_t i = 1) : m_count{i} {}
+        /**
+         * @brief binop used in fold expression.
+         *
+         * @param other another counter.
+         * @return the one with more captures.
+         */
+        constexpr count operator|(count other) { return (m_count < other.m_count) ? other : *this; }
+        /**
+         * @brief user defined conversion
+         *
+         */
+        constexpr operator size_t() { return m_count; }
+    };
+
+    /**
+     * @brief Gets the number of captures in a regex.
+     *
+     * @tparam Rule the rule containing the regex.
+     * @tparam IBegin begin iterator.
+     * @tparam IEnd end iterator
+     * @return number of captures.
+     */
+    template<typename Rule, typename IBegin, typename IEnd>
+    static constexpr size_t get_num_captures() {
+        return std::tuple_size_v<decltype(Rule::match(IBegin{}, IEnd{}))>;
+    }
+    /**
+     * @brief returns the maximum number of captures of any rule.
+     *
+     * @tparam IBegin begin iterator.
+     * @tparam IEnd end iterator.
+     * @tparam Rule argpack of rules.
+     * @return size_t the maximum number of captures of any rule.
+     */
+    template<typename IBegin, typename IEnd, typename... Rule>
+    static constexpr size_t max(ctll::list<Rule...>) {
+        return (count{} | ... | count{get_num_captures<Rule, IBegin, IEnd>()});
+    }
+} // namespace capture
 
 template<typename... Ty>
 class derives_from : public Ty...
 {};
-
-template<template<typename> typename Wrapper, typename... Rule>
-static constexpr auto wrap_rule(ctll::list<Rule...>) -> ctll::list<Wrapper<Rule>...>;
-
-template<typename... Rule>
-static constexpr auto get_return_list(ctll::list<Rule...>)
-  -> ctll::list<typename Rule::return_t...>;
-
 } // namespace ctle
 #endif // CTLE_UTILS
