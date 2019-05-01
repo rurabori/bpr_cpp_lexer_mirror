@@ -2,7 +2,6 @@
 #define CTLE_FILE_STACK
 #include "file.h"
 #include <vector>
-#include <iostream>
 
 namespace ctle {
 
@@ -31,7 +30,7 @@ public:
      * @return true if success false otherwise.
      */
     template<typename... Args>
-    bool push(Args&&... constructor_args) {
+    bool push(Args&&... constructor_args) noexcept {
         auto new_file = FileType::create(std::forward<Args>(constructor_args)...);
 
         if (!new_file) return false;
@@ -44,7 +43,7 @@ public:
      *
      * @param current_position an iterator, that MUST belong to the file at the top of the stack.
      */
-    void store(iterator_t current_position) {
+    void store(iterator_t current_position) noexcept {
         if (!m_files.empty()) {
             auto& current = m_files.back();
             current.second = std::distance(current.first->begin(), current_position);
@@ -57,14 +56,14 @@ public:
     /**
      * @brief removes a file from the stack.
      */
-    void pop() { m_files.pop_back(); }
+    void pop() noexcept { m_files.pop_back(); }
     /**
      * @brief returns the file on top of the stack, in the state that it was last stored (if offset
      * was stored).
      *
      * @return file_range, if stack is empty, an empty range is returned.
      */
-    file_range top() {
+    file_range top() noexcept {
         if (m_files.empty()) return file_range{};
 
         auto& current = m_files.back();

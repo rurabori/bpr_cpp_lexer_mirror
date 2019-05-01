@@ -1,6 +1,6 @@
-#ifndef CTLE_LEXER_RE
-#define CTLE_LEXER_RE
-#include "lexer_re.h"
+#ifndef CTLE_REGEX
+#define CTLE_REGEX
+#include <ctre.hpp>
 
 namespace ctle {
 /**
@@ -34,7 +34,7 @@ struct regular_expression : public ctre::regular_expression<RE>
  *
  * @tparam input pattern from which re is created.
  */
-template<ctll::basic_fixed_string input>
+template<ctll::fixed_string input>
 CTRE_FLATTEN constexpr CTRE_FORCE_INLINE auto make_re() noexcept {
     constexpr auto _input = input; // workaround for GCC 9 bug 88092
     using tmp = typename ctll::parser<ctre::pcre, _input,
@@ -49,4 +49,4 @@ regular_expression(RE)->regular_expression<RE>;
 
 } // namespace ctle
 
-#endif // CTLE_LEXER_RE
+#endif // CTLE_REGEX

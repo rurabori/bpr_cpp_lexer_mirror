@@ -1,18 +1,12 @@
-#ifndef CTLE_LEXER_RULE
-#define CTLE_LEXER_RULE
-
-#include "ctll/fixed_string.hpp"
+#ifndef CTLE_RULE
+#define CTLE_RULE
 
 #include "utils.h"
-#include "states.h"
-#include "ctle_concepts.h"
-#include "match_result.h"
 #include "callable.h"
+#include "regex.h"
 
+#include <ctll/fixed_string.hpp>
 #include <array>
-#include <algorithm>
-#include <optional>
-#include <variant>
 
 namespace ctle {
 /**
@@ -22,9 +16,9 @@ namespace ctle {
  * @tparam Action a callable. The action will be executed after this rule is matched.
  * @tparam States an std::array of all states this rule is valid in.
  */
-template<ctll::basic_fixed_string Pattern, callable Action = empty_callable,
+template<ctll::fixed_string Pattern, callable Action = empty_callable,
          std::array States = std::array{state_initial}>
-class lexer_rule
+class rule
 {
 public:
     static constexpr auto action = Action;
@@ -48,7 +42,7 @@ public:
      * @return a match_result, containing the matched text (and captures), and an action (if any).
      */
     template<typename Ibegin, typename Iend>
-    static constexpr CTRE_FORCE_INLINE auto match(Ibegin begin, Iend end) {
+    static constexpr CTRE_FORCE_INLINE auto match(Ibegin begin, Iend end) noexcept {
         return pattern_t::match_relaxed(begin, end);
     }
     /**
@@ -60,4 +54,4 @@ public:
     using return_t = decltype(match(std::declval<IBegin>(), std::declval<IEnd>()));
 };
 } // namespace ctle
-#endif // CTLE_LEXER_RULE
+#endif // CTLE_RULE

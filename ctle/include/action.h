@@ -1,12 +1,7 @@
 #ifndef CTLE_ACTION
 #define CTLE_ACTION
-#include "ctre.hpp"
-#include "ctll/fixed_string.hpp"
-#include "lexer_re.h"
-#include "states.h"
 #include "callable.h"
 
-#include <array>
 #include <optional>
 
 namespace ctle {

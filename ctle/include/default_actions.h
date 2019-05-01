@@ -8,7 +8,7 @@
 namespace ctle::default_actions {
 
 constexpr auto echo
-  = [](LexerInterface& b, auto&&... all) -> void { (std::cout << ... << all.to_view()) << '\n'; };
+  = [](LexerInterface& b, auto&&... all) -> void { (std::cout << ... << all) << '\n'; };
 
 constexpr auto eof = [](auto eof_token) {
     return [eof_token](LexerInterface& lexer, auto&&...) {

@@ -35,7 +35,7 @@ public:
      * @brief Destructor.
      *
      */
-    ~basic_file();
+    ~basic_file() noexcept;
     /**
      * @brief initializes the object. Should mimick the constructor argument wise.
      *
@@ -51,7 +51,7 @@ public:
      * @return std::unique_ptr<basic_file> if success, false otherwise.
      */
     template<typename... Args>
-    static std::unique_ptr<basic_file> create(Args&&... args);
+    static std::unique_ptr<basic_file> create(Args&&... args) noexcept;
 
     // accessors
     const CharT* begin() const noexcept { return m_data.data; }
@@ -75,7 +75,7 @@ basic_file<CharT>::basic_file(const std::filesystem::path& path) {
 }
 
 template<typename CharT>
-basic_file<CharT>::~basic_file() {
+basic_file<CharT>::~basic_file() noexcept {
     if (m_data.data) munmap(m_data.data, m_data.size);
     close(m_fd); // we dont care if fd is bad.
 }
@@ -87,7 +87,7 @@ bool basic_file<CharT>::initialize(const std::filesystem::path& path) noexcept {
 
 template<typename CharT>
 template<typename... Args>
-std::unique_ptr<basic_file<CharT>> basic_file<CharT>::create(Args&&... args) {
+std::unique_ptr<basic_file<CharT>> basic_file<CharT>::create(Args&&... args) noexcept {
     auto retval = std::make_unique<basic_file>(std::forward<Args>(args)...);
     return (retval->initialize(std::forward<Args>(args)...)) ? std::move(retval) : nullptr;
 }
