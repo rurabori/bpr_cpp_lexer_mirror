@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.10)
-project(bachelors VERSION 0.0.1)
+project(ctle VERSION 0.0.1)
 
-add_subdirectory(flex_cpp_lexer)
-add_subdirectory(antlr_cpp_lexer)
-add_subdirectory(ctle_cpp_lexer)
+add_subdirectory(examples)
+add_subdirectory(tests)
+
+set(CMAKE_GENERATOR "Ninja")

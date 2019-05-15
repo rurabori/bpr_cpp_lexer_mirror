@@ -1,5 +1,4 @@
 cmake_minimum_required(VERSION 3.10)
-project(antlr_cpp_lexer VERSION 0.0.1)
 
 add_custom_command(
     OUTPUT antlr_cpp_lexer.cpp antlr_cpp_lexer.h
@@ -22,3 +21,4 @@ target_include_directories(
 )
 
 target_link_libraries(antlr_cpp_lexer PRIVATE /usr/local/lib/libantlr4-runtime.a)
+target_compile_options(antlr_cpp_lexer PRIVATE -std=c++2a -Ofast -march=skylake)
