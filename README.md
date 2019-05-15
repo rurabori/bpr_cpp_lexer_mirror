@@ -1,18 +1,47 @@
-# BPR_CPP_LEXER
+# CTLE - Compile Time LExer
 
-This does not compile with anything less than GCC-9 (as of right now that means trunk).
+A compile-time generated lexical analyzer.
 
-My compiler config : 
-	Using built-in specs.
-	COLLECT_GCC=g++
-	COLLECT_LTO_WRAPPER=/usr/gcc-trunk/libexec/gcc/x86_64-pc-linux-gnu/9.0.0/lto-wrapper
-	Target: x86_64-pc-linux-gnu
-	Configured with: ../gcc/configure --prefix=/usr/gcc-trunk --enable-languages=c,c++,fortran --disable-libquadmath --disable-libquadmath-support --disable-werror --disable-bootstrap --enable-gold --disable-multilib : (reconfigured) ../gcc/configure --prefix=/usr/gcc-trunk --enable-languages=c,c++,fortran --disable-libquadmath --disable-libquadmath-support --disable-werror --disable-bootstrap --enable-gold --disable-multilib
-	Thread model: posix
-	gcc version 9.0.0 20181118 (experimental) (GCC)
+## Example:
+```c++
+enum tokens {
+  tok_int,
+  tok_double
+};
 
-	Built from commit 20f6624d3e5.
+using rules = ctll::list<
+  // return value to caller
+  ctle::rule<"int", [](auto&&...){ return tokens::tok_int; }>,
+  // don't return to caller
+  ctle::rule<"[ \t\n\f\v\r]+", [](auto& lexer, auto lexeme) { count_whitespace(lexeme); } >
+  ...
+>;
 
-	EXPERIMENTAL_GCC_9 is there from Hanka Dusikova because GCC does not implement cnttp in a way that works with ctre so some code is 'ifdefed'.
+ctle::lexer<tokens, rules> lexer;
+ctle::basic_file<char> input{"main.cpp"};
+lexer.set_input(input);
+while (true) {
+  auto [token, lexeme] = lexer.lex();
+}
+...
+```
 
-	commandline to compile main : g++ -std=c++2a -DEXPERIMENTAL_GCC_9 -I'compile-time-regular-expressions/include' -O3 -Wno-gnu-string-literal-operator-template  -pedantic -Wall -Wextra  -MMD -c main.cpp -o a.o.
+## Compiling
+CTLE makes use of cnttp so it requires C++20, currently only GCC9 supports all the features needed.
+
+## Regular Expressions
+CTLE uses CTRE (https://github.com/hanickadot/compile-time-regular-expressions) as its regex driver. It supports captures, which changes
+the signature of an action.
+```c++
+ctle::rule<"no_captures", [](auto& lexer, auto lexeme) {}>
+ctle::rule<"one_(capture)", [](auto& lexer, auto lexeme, auto capture1) {}>
+```
+etc.
+## Retutning values to caller of lex()
+The callable provided as an action must have one of the three return types:
+```c++
+void // does not return to caller of lex()
+ReturnT // does return to the caller of lex()
+std::optional<ReturnT> // returns only if optional has value
+```
+Where ReturnT is the first template parameter passed to ctle::lexer.
